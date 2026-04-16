@@ -1,0 +1,302 @@
+export const dictionaries = {
+  en: {
+    // Nav
+    nav: {
+      brand: "AggregatAPI",
+      signIn: "Sign in with Google",
+      dashboard: "Dashboard",
+      docs: "Documentation",
+    },
+    // Landing
+    landing: {
+      badge: "v1.0 API Aggregator Now Live",
+      title1: "One API.",
+      title2: "Infinite Models.",
+      subtitle:
+        "Route your request to OpenRouter or Together AI automatically. Built-in billing, keys management, and analytics.",
+      cta: "Get Started",
+      ctaLoggedIn: "Go to Dashboard →",
+      learnMore: "Learn More",
+      features: [
+        {
+          icon: "⚡",
+          title: "Smart Routing",
+          desc: "Automatically route requests based on price and availability with intelligent heuristic rules.",
+        },
+        {
+          icon: "💳",
+          title: "Built-in Billing",
+          desc: "Integrate payments instantly. Manage user balances effortlessly tracked by token consumption.",
+        },
+        {
+          icon: "🔌",
+          title: "OpenAI Compatible",
+          desc: "A seamless drop-in replacement API for OpenAI. Zero changes required on your application layer.",
+        },
+      ],
+      footer: "© 2026 AggregatAPI. Built with Next.js, Prisma & NextAuth.",
+    },
+    // Dashboard
+    dashboard: {
+      title: "Dashboard Overview",
+      welcome: "Welcome back,",
+      overview: "Overview",
+      apiKeys: "API Keys",
+      billing: "Billing",
+      settings: "Settings",
+      signOut: "Sign out",
+      stats: {
+        balance: "Available Balance",
+        topUp: "+ Top up →",
+        requests: "Total Requests",
+        requestsSub: "Last 30 days",
+        latency: "Avg Latency",
+        latencySub: "p50 across models",
+      },
+      usage: {
+        title: "Recent Usage",
+        time: "Time",
+        model: "Model",
+        tokens: "Tokens",
+        cost: "Cost",
+      },
+    },
+    // API Keys page
+    keys: {
+      title: "API Keys",
+      subtitle: "Manage your API keys for accessing the aggregation gateway.",
+      create: "Create New Key",
+      name: "Key Name",
+      key: "API Key",
+      created: "Created",
+      status: "Status",
+      actions: "Actions",
+      active: "Active",
+      revoked: "Revoked",
+      revoke: "Revoke",
+      delete: "Delete",
+      copyHint: "Copy this key — it won't be shown again.",
+      noKeys: "No API keys yet. Create one to get started.",
+      endpoint: "API Endpoint",
+      endpointDesc: "Use this base URL in your OpenAI-compatible client:",
+      exampleTitle: "Quick Start Example",
+    },
+    // Billing page
+    billingPage: {
+      title: "Billing & Payments",
+      subtitle: "Manage your account balance and view transaction history.",
+      currentBalance: "Current Balance",
+      topUp: "Top Up",
+      selectAmount: "Select Amount",
+      customAmount: "Custom",
+      payWith: "Pay with PayPal",
+      history: "Transaction History",
+      date: "Date",
+      type: "Type",
+      amount: "Amount",
+      status: "Status",
+      topUpType: "Top Up",
+      usageType: "Usage",
+      completed: "Completed",
+      pending: "Pending",
+      noTransactions: "No transactions yet.",
+    },
+    // Settings page
+    settingsPage: {
+      title: "Settings",
+      subtitle: "Manage your account preferences.",
+      profile: "Profile",
+      profileDesc: "Your account information from Google.",
+      name: "Name",
+      email: "Email",
+      preferences: "Preferences",
+      language: "Language",
+      theme: "Theme",
+      dark: "Dark",
+      light: "Light",
+      system: "System",
+      dangerZone: "Danger Zone",
+      dangerDesc: "Irreversible and destructive actions.",
+      deleteAccount: "Delete Account",
+      deleteWarn:
+        "Once you delete your account, there is no going back. All your data, API keys, and remaining balance will be permanently removed.",
+    },
+    // Docs page
+    docsPage: {
+      title: "API Documentation",
+      subtitle: "Everything you need to integrate with AggregatAPI.",
+      gettingStarted: "Getting Started",
+      gettingStartedDesc:
+        "AggregatAPI provides an OpenAI-compatible API endpoint. Simply replace your base URL and API key to start using 100+ AI models.",
+      authentication: "Authentication",
+      authDesc:
+        'All API requests require an API key passed via the Authorization header as a Bearer token.',
+      chatCompletions: "Chat Completions",
+      chatDesc:
+        "Send a chat completion request. This endpoint is fully compatible with the OpenAI Chat Completions API.",
+      models: "Supported Models",
+      modelsDesc:
+        "We support all models available on OpenRouter and Together AI. Here are some popular ones:",
+      rateLimit: "Rate Limits",
+      rateLimitDesc:
+        "Default rate limit is 60 requests per minute per API key. Contact us to increase your limit.",
+    },
+    // Theme
+    theme: {
+      dark: "Dark",
+      light: "Light",
+    },
+    // Language
+    lang: {
+      en: "EN",
+      zh: "中文",
+    },
+  },
+
+  zh: {
+    nav: {
+      brand: "AggregatAPI",
+      signIn: "使用 Google 登录",
+      dashboard: "控制台",
+      docs: "文档",
+    },
+    landing: {
+      badge: "v1.0 API 聚合器已上线",
+      title1: "一个 API",
+      title2: "无限模型。",
+      subtitle:
+        "自动将请求路由到 OpenRouter 或 Together AI。内置计费、密钥管理和分析功能。",
+      cta: "立即开始",
+      ctaLoggedIn: "进入控制台 →",
+      learnMore: "了解更多",
+      features: [
+        {
+          icon: "⚡",
+          title: "智能路由",
+          desc: "基于价格和可用性，通过智能启发式规则自动路由请求。",
+        },
+        {
+          icon: "💳",
+          title: "内置计费",
+          desc: "即时集成支付。按 Token 消耗量轻松管理用户余额。",
+        },
+        {
+          icon: "🔌",
+          title: "兼容 OpenAI",
+          desc: "完全兼容 OpenAI 的无缝替代 API。应用层无需任何更改。",
+        },
+      ],
+      footer: "© 2026 AggregatAPI. 基于 Next.js, Prisma & NextAuth 构建。",
+    },
+    dashboard: {
+      title: "控制台总览",
+      welcome: "欢迎回来，",
+      overview: "总览",
+      apiKeys: "API 密钥",
+      billing: "账单",
+      settings: "设置",
+      signOut: "退出登录",
+      stats: {
+        balance: "可用余额",
+        topUp: "+ 充值 →",
+        requests: "总请求数",
+        requestsSub: "最近 30 天",
+        latency: "平均延迟",
+        latencySub: "所有模型 p50",
+      },
+      usage: {
+        title: "最近使用记录",
+        time: "时间",
+        model: "模型",
+        tokens: "Token 数",
+        cost: "费用",
+      },
+    },
+    keys: {
+      title: "API 密钥",
+      subtitle: "管理你用于访问聚合网关的 API 密钥。",
+      create: "创建新密钥",
+      name: "密钥名称",
+      key: "API 密钥",
+      created: "创建时间",
+      status: "状态",
+      actions: "操作",
+      active: "生效中",
+      revoked: "已撤销",
+      revoke: "撤销",
+      delete: "删除",
+      copyHint: "复制此密钥 — 之后不会再显示。",
+      noKeys: "暂无 API 密钥。创建一个开始使用吧。",
+      endpoint: "API 接口地址",
+      endpointDesc: "在你的 OpenAI 兼容客户端中使用此基础 URL：",
+      exampleTitle: "快速开始示例",
+    },
+    billingPage: {
+      title: "账单与支付",
+      subtitle: "管理你的账户余额并查看交易记录。",
+      currentBalance: "当前余额",
+      topUp: "充值",
+      selectAmount: "选择金额",
+      customAmount: "自定义",
+      payWith: "通过 PayPal 支付",
+      history: "交易历史",
+      date: "日期",
+      type: "类型",
+      amount: "金额",
+      status: "状态",
+      topUpType: "充值",
+      usageType: "消费",
+      completed: "已完成",
+      pending: "处理中",
+      noTransactions: "暂无交易记录。",
+    },
+    settingsPage: {
+      title: "设置",
+      subtitle: "管理你的账户偏好。",
+      profile: "个人信息",
+      profileDesc: "来自 Google 的账户信息。",
+      name: "姓名",
+      email: "邮箱",
+      preferences: "偏好设置",
+      language: "语言",
+      theme: "主题",
+      dark: "深色",
+      light: "浅色",
+      system: "跟随系统",
+      dangerZone: "危险操作",
+      dangerDesc: "不可逆的破坏性操作。",
+      deleteAccount: "删除账户",
+      deleteWarn:
+        "账户一旦删除将无法恢复。你的所有数据、API 密钥和剩余余额都将被永久移除。",
+    },
+    docsPage: {
+      title: "API 文档",
+      subtitle: "集成 AggregatAPI 所需的一切。",
+      gettingStarted: "快速入门",
+      gettingStartedDesc:
+        "AggregatAPI 提供兼容 OpenAI 的 API 端点。只需替换你的基础 URL 和 API 密钥，即可开始使用 100+ AI 模型。",
+      authentication: "鉴权认证",
+      authDesc: "所有 API 请求需要通过 Authorization 请求头以 Bearer Token 方式传递 API 密钥。",
+      chatCompletions: "对话补全",
+      chatDesc:
+        "发送对话补全请求。此端点与 OpenAI Chat Completions API 完全兼容。",
+      models: "支持的模型",
+      modelsDesc:
+        "我们支持 OpenRouter 和 Together AI 上所有可用的模型。以下是一些热门模型：",
+      rateLimit: "速率限制",
+      rateLimitDesc:
+        "默认速率限制为每个 API 密钥每分钟 60 次请求。如需提升限额请联系我们。",
+    },
+    theme: {
+      dark: "深色",
+      light: "浅色",
+    },
+    lang: {
+      en: "EN",
+      zh: "中文",
+    },
+  },
+} as const;
+
+export type Locale = keyof typeof dictionaries;
+export type Dictionary = (typeof dictionaries)[Locale];

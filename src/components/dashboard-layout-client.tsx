@@ -1,0 +1,117 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useLang } from "@/lib/lang-context";
+import { useTheme } from "@/lib/theme-context";
+import type { ReactNode } from "react";
+
+export function DashboardLayoutClient({
+  children,
+  user,
+  signOutAction,
+}: {
+  children: ReactNode;
+  user: { name?: string | null; email?: string | null; image?: string | null };
+  signOutAction: () => void;
+}) {
+  const { t, locale, setLocale } = useLang();
+  const { theme, toggleTheme } = useTheme();
+  const pathname = usePathname();
+
+  const navItems = [
+    { label: t.dashboard.overview, href: "/dashboard" },
+    { label: t.dashboard.apiKeys, href: "/dashboard/keys" },
+    { label: t.dashboard.billing, href: "/dashboard/billing" },
+    { label: t.dashboard.settings, href: "/dashboard/settings" },
+  ];
+
+  return (
+    <div className="flex h-screen bg-[var(--bg-main)] text-[var(--text-main)] font-sans overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-[280px] bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] p-8 hidden md:flex flex-col shrink-0 z-10 transition-colors">
+        <div className="flex items-center justify-between mb-12">
+          <Link
+            href="/"
+            className="text-2xl font-bold text-[var(--brand-primary)] tracking-tight hover:opacity-80 transition-opacity"
+          >
+            {t.nav.brand}
+          </Link>
+        </div>
+
+        <nav className="flex-1 space-y-2">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`block rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                  active
+                    ? "bg-[var(--brand-primary)] text-[var(--brand-primary-text)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User Profile + Tools */}
+        <div className="mt-auto pt-6 border-t border-[var(--border-subtle)] flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded bg-[var(--bg-surface-hover)] hover:bg-[var(--border-subtle)] transition-colors text-sm"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? "🌙" : "☀️"}
+            </button>
+            <button
+              onClick={() => setLocale(locale === "en" ? "zh" : "en")}
+              className="px-3 py-1.5 rounded bg-[var(--bg-surface-hover)] hover:bg-[var(--border-subtle)] transition-colors text-sm font-medium"
+            >
+              {locale === "en" ? "中文" : "EN"}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {user.image ? (
+              <img
+                src={user.image}
+                alt={user.name || "Avatar"}
+                className="w-10 h-10 rounded-full ring-2 ring-[var(--border-subtle)]"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[var(--brand-primary)]/20 text-[var(--brand-primary)] flex items-center justify-center font-bold text-sm">
+                {user.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+            )}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium truncate">
+                {user.name || "User"}
+              </span>
+              <span className="text-xs text-[var(--text-muted)] truncate">
+                {user.email}
+              </span>
+            </div>
+          </div>
+
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="w-full text-left text-sm text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer py-1"
+            >
+              {t.dashboard.signOut}
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 p-8 md:p-16 overflow-y-auto">{children}</main>
+    </div>
+  );
+}
