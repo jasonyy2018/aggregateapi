@@ -27,13 +27,13 @@ export function DashboardLayoutClient({
   ];
 
   return (
-    <div className="flex h-screen bg-[var(--bg-main)] text-[var(--text-main)] font-sans overflow-hidden">
+    <div className="flex h-screen bg-bg-main text-text-main font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-[280px] bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] p-8 hidden md:flex flex-col shrink-0 z-10 transition-colors">
+      <aside className="w-[280px] bg-bg-surface border-r border-border-subtle p-8 hidden md:flex flex-col shrink-0 z-10 transition-colors">
         <div className="flex items-center justify-between mb-12">
           <Link
             href="/"
-            className="text-2xl font-bold text-[var(--brand-primary)] tracking-tight hover:opacity-80 transition-opacity"
+            className="text-2xl font-bold text-brand-primary tracking-tight hover:opacity-80 transition-opacity"
           >
             {t.nav.brand}
           </Link>
@@ -48,8 +48,8 @@ export function DashboardLayoutClient({
                 href={item.href}
                 className={`block rounded-lg px-4 py-3 text-base font-medium transition-colors ${
                   active
-                    ? "bg-[var(--brand-primary)] text-[var(--brand-primary-text)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)]"
+                    ? "bg-brand-primary text-brand-primary-text"
+                    : "text-text-muted hover:text-text-main hover:bg-bg-surface-hover"
                 }`}
               >
                 {item.label}
@@ -59,18 +59,18 @@ export function DashboardLayoutClient({
         </nav>
 
         {/* User Profile + Tools */}
-        <div className="mt-auto pt-6 border-t border-[var(--border-subtle)] flex flex-col gap-4">
+        <div className="mt-auto pt-6 border-t border-border-subtle flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded bg-[var(--bg-surface-hover)] hover:bg-[var(--border-subtle)] transition-colors text-sm"
+              className="p-2 rounded bg-[var(--bg-surface-hover)] hover:bg-border-subtle transition-colors text-sm"
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? "🌙" : "☀️"}
             </button>
             <button
               onClick={() => setLocale(locale === "en" ? "zh" : "en")}
-              className="px-3 py-1.5 rounded bg-[var(--bg-surface-hover)] hover:bg-[var(--border-subtle)] transition-colors text-sm font-medium"
+              className="px-3 py-1.5 rounded bg-[var(--bg-surface-hover)] hover:bg-border-subtle transition-colors text-sm font-medium"
             >
               {locale === "en" ? "中文" : "EN"}
             </button>
@@ -81,11 +81,11 @@ export function DashboardLayoutClient({
               <img
                 src={user.image}
                 alt={user.name || "Avatar"}
-                className="w-10 h-10 rounded-full ring-2 ring-[var(--border-subtle)]"
+                className="w-10 h-10 rounded-full ring-2 ring-border-subtle"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-[var(--brand-primary)]/20 text-[var(--brand-primary)] flex items-center justify-center font-bold text-sm">
+              <div className="w-10 h-10 rounded-full bg-brand-primary/20 text-brand-primary flex items-center justify-center font-bold text-sm">
                 {user.name?.charAt(0)?.toUpperCase() || "U"}
               </div>
             )}
@@ -93,7 +93,7 @@ export function DashboardLayoutClient({
               <span className="text-sm font-medium truncate">
                 {user.name || "User"}
               </span>
-              <span className="text-xs text-[var(--text-muted)] truncate">
+              <span className="text-xs text-text-muted truncate">
                 {user.email}
               </span>
             </div>
@@ -102,7 +102,7 @@ export function DashboardLayoutClient({
           <form action={signOutAction}>
             <button
               type="submit"
-              className="w-full text-left text-sm text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer py-1"
+              className="w-full text-left text-sm text-text-muted hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer py-1"
             >
               {t.dashboard.signOut}
             </button>
