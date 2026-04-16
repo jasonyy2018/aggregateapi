@@ -17,7 +17,7 @@ export function LandingClient({
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="min-h-screen font-sans selection:bg-[var(--brand-primary)]/30 selection:text-white">
+    <div className="min-h-screen font-sans selection:bg-brand-primary/30 selection:text-white">
       {/* Background Neon Streaks */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[20%] left-[-10%] w-[60%] h-2 bg-[#818CF8] opacity-50 blur-2xl -rotate-6" />
@@ -27,22 +27,23 @@ export function LandingClient({
 
       {/* Top Navigation Bar */}
       <nav className="relative z-20 flex flex-wrap items-center justify-between px-8 md:px-16 py-6 gap-4">
-        <span className="text-xl font-bold tracking-tight text-[var(--brand-primary)]">
+        <Link href="/" className="flex items-center gap-3 text-xl font-bold tracking-tight text-brand-primary">
+          <img src="/logo.jpg" alt="Logo" className="w-10 h-10 object-contain rounded-xl" />
           {t.nav.brand}
-        </span>
+        </Link>
 
         <div className="flex items-center gap-4 ml-auto">
           {/* Controls */}
-          <div className="flex items-center gap-2 border-r border-[var(--border-subtle)] pr-4">
+          <div className="flex items-center gap-2 border-r border-border-subtle pr-4">
             <button
               onClick={toggleTheme}
-              className="px-2 py-1 rounded text-sm hover:bg-[var(--bg-surface-hover)] transition-colors text-[var(--text-muted)]"
+              className="px-2 py-1 rounded text-sm hover:bg-bg-surface-hover transition-colors text-text-muted"
             >
               {theme === "dark" ? "🌙" : "☀️"}
             </button>
             <button
               onClick={() => setLocale(locale === "en" ? "zh" : "en")}
-              className="px-2 py-1 rounded text-sm hover:bg-[var(--bg-surface-hover)] transition-colors text-[var(--text-muted)]"
+              className="px-2 py-1 rounded text-sm hover:bg-bg-surface-hover transition-colors text-text-muted"
             >
               {locale === "en" ? "中" : "EN"}
             </button>
@@ -50,12 +51,12 @@ export function LandingClient({
 
           {isLoggedIn ? (
             <>
-              <span className="text-sm text-[var(--text-muted)] hidden sm:inline">
+              <span className="text-sm text-text-muted hidden sm:inline">
                 {userEmail}
               </span>
               <Link
                 href="/dashboard"
-                className="h-10 px-5 rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-text)] font-semibold text-sm flex items-center justify-center transition-transform hover:scale-105"
+                className="h-10 px-5 rounded-lg bg-brand-primary text-brand-primary-text font-semibold text-sm flex items-center justify-center transition-transform hover:scale-105"
               >
                 {t.nav.dashboard}
               </Link>
@@ -64,7 +65,7 @@ export function LandingClient({
             <form action={signInAction}>
               <button
                 type="submit"
-                className="h-10 px-5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-main)] text-sm font-medium flex items-center gap-2 transition-colors hover:bg-[var(--bg-surface)] cursor-pointer bg-transparent"
+                className="h-10 px-5 rounded-lg border border-border-subtle text-text-main text-sm font-medium flex items-center gap-2 transition-colors hover:bg-bg-surface cursor-pointer bg-transparent"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -96,17 +97,17 @@ export function LandingClient({
         <div className="flex-1" />
 
         <div className="flex flex-col items-center justify-center text-center space-y-10 z-10 w-full max-w-4xl mx-auto">
-          <div className="inline-flex items-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-sm text-[var(--brand-secondary)] shadow-sm">
+          <div className="inline-flex items-center rounded-2xl border border-border-subtle bg-bg-surface px-4 py-2 text-sm text-brand-secondary shadow-sm">
             {t.landing.badge}
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold tracking-tight text-[var(--text-main)] leading-[1.1]">
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold tracking-tight text-text-main leading-[1.1]">
             {t.landing.title1}
             <br />
             {t.landing.title2}
           </h1>
 
-          <p className="text-lg md:text-xl text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed">
             {t.landing.subtitle}
           </p>
 
@@ -114,7 +115,7 @@ export function LandingClient({
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-text)] font-bold text-lg transition-transform hover:scale-105"
+                className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-brand-primary text-brand-primary-text font-bold text-lg transition-transform hover:scale-105"
               >
                 {t.landing.ctaLoggedIn}
               </Link>
@@ -122,7 +123,7 @@ export function LandingClient({
               <form action={signInAction}>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-text)] font-bold text-lg transition-transform hover:scale-105 cursor-pointer w-full"
+                  className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-brand-primary text-brand-primary-text font-bold text-lg transition-transform hover:scale-105 cursor-pointer w-full"
                 >
                   {t.landing.cta}
                 </button>
@@ -130,7 +131,7 @@ export function LandingClient({
             )}
             <Link
               href="#features"
-              className="inline-flex items-center justify-center h-14 px-8 rounded-lg border border-[var(--border-subtle)] text-[var(--text-main)] bg-[var(--bg-surface)] text-lg transition-colors hover:bg-[var(--bg-surface-hover)] font-medium"
+              className="inline-flex items-center justify-center h-14 px-8 rounded-lg border border-border-subtle text-text-main bg-bg-surface text-lg transition-colors hover:bg-bg-surface-hover font-medium"
             >
               {t.landing.learnMore}
             </Link>
@@ -147,13 +148,13 @@ export function LandingClient({
           {t.landing.features.map((f) => (
             <div
               key={f.title}
-              className="group rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm p-10 flex flex-col items-start hover:-translate-y-1 transition-all duration-300 hover:border-[var(--brand-primary)]"
+              className="group rounded-2xl border border-border-subtle bg-bg-surface shadow-sm p-10 flex flex-col items-start hover:-translate-y-1 transition-all duration-300 hover:border-brand-primary"
             >
               <span className="text-3xl mb-4">{f.icon}</span>
-              <h3 className="text-2xl font-bold text-[var(--text-main)] mb-3">
+              <h3 className="text-2xl font-bold text-text-main mb-3">
                 {f.title}
               </h3>
-              <p className="text-[var(--text-muted)] text-base leading-relaxed">
+              <p className="text-text-muted text-base leading-relaxed">
                 {f.desc}
               </p>
             </div>
@@ -162,7 +163,7 @@ export function LandingClient({
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-[var(--border-subtle)] py-8 px-8 text-center text-sm text-[var(--text-muted)]">
+      <footer className="relative z-10 border-t border-border-subtle py-8 px-8 text-center text-sm text-text-muted">
         {t.landing.footer}
       </footer>
     </div>

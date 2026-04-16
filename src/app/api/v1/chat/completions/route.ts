@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { getPrisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
 
 // A simple implementation of the chat completions API Gateway
 export async function POST(req: Request) {
+  const prisma = getPrisma();
   try {
     // 1. Verify Authorization
     const authHeader = req.headers.get('authorization');

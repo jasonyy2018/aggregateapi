@@ -1,10 +1,19 @@
 "use client";
 import { useLang } from "@/lib/lang-context";
 import { useState } from "react";
+import PaypalCheckout from "@/components/payment/paypal-checkout";
+import AlipayCheckout from "@/components/payment/alipay-checkout";
 
 export default function BillingPage() {
   const { t } = useLang();
   const [amount, setAmount] = useState<number>(20);
+  const [method, setMethod] = useState<"paypal" | "alipay">("paypal");
+
+  const handlePaymentSuccess = () => {
+    alert("Payment successful! Balance applied.");
+    // In production, trigger a mutate/refresh to reload user balance.
+    window.location.reload();
+  };
 
   return (
     <>
@@ -12,47 +21,75 @@ export default function BillingPage() {
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           {t.billingPage.title}
         </h1>
-        <p className="mt-2 text-[var(--text-muted)]">
+        <p className="mt-2 text-text-muted">
           {t.billingPage.subtitle}
         </p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Balance Card */}
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-8 shadow-sm">
-          <h2 className="text-lg font-medium text-[var(--text-muted)] mb-2">
+        <div className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm flex flex-col">
+          <h2 className="text-lg font-medium text-text-muted mb-2">
             {t.billingPage.currentBalance}
           </h2>
           <div className="text-5xl font-bold mb-8">$24.50</div>
 
-          <div className="space-y-4">
-            <h3 className="font-medium">{t.billingPage.topUp}</h3>
-            <div className="flex flex-wrap gap-2">
-              {[10, 20, 50, 100].map((val) => (
+          <div className="space-y-6 flex-1">
+            {/* Amount Selection */}
+            <div>
+              <h3 className="font-medium mb-3">{t.billingPage.selectAmount}</h3>
+              <div className="flex flex-wrap gap-2">
+                {[10, 20, 50, 100].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => setAmount(val)}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      amount === val
+                        ? "border-brand-primary bg-brand-primary/10 text-brand-primary"
+                        : "border-border-subtle hover:border-brand-primary/50"
+                    }`}
+                  >
+                    ${val}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Method Toggle */}
+            <div className="pt-2 border-t border-border-subtle">
+              <div className="flex bg-bg-main p-1 rounded-lg">
                 <button
-                  key={val}
-                  onClick={() => setAmount(val)}
-                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    amount === val
-                      ? "border-[var(--brand-primary)] bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]"
-                      : "border-[var(--border-subtle)] hover:border-[var(--brand-primary)]/50"
+                  onClick={() => setMethod("paypal")}
+                  className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+                    method === "paypal" ? "bg-bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-text-main" : "text-text-muted hover:text-text-main"
                   }`}
                 >
-                  ${val}
+                  {t.billingPage.paypal}
                 </button>
-              ))}
+                <button
+                  onClick={() => setMethod("alipay")}
+                  className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+                    method === "alipay" ? "bg-[#1677FF] text-white shadow-[0_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-main"
+                  }`}
+                >
+                  {t.billingPage.alipay}
+                </button>
+              </div>
             </div>
-            <button className="w-full mt-4 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.382 6.553C16.892 4.148 15.021 2 11.516 2H4.496C4.041 2 3.649 2.316 3.565 2.763L1.015 18.847C.949 19.263 1.272 19.641 1.696 19.641h3.91l.82-5.187c.084-.45.476-.793.931-.793h1.86c3.486 0 6.002-1.637 6.643-4.717.323-1.545.143-2.613-.478-3.391z" />
-              </svg>
-              {t.billingPage.payWith}
-            </button>
+
+            {/* Dynamic Payment Gateways */}
+            <div className="mt-auto">
+              {method === "paypal" ? (
+                <PaypalCheckout amount={amount} onSuccess={handlePaymentSuccess} />
+              ) : (
+                <AlipayCheckout amount={amount} />
+              )}
+            </div>
           </div>
         </div>
 
         {/* Transaction History preview */}
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-8 shadow-sm">
+        <div className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
           <h2 className="text-xl font-bold mb-6">{t.billingPage.history}</h2>
           <div className="flex flex-col gap-4">
             {[
@@ -68,17 +105,17 @@ export default function BillingPage() {
                 type: t.billingPage.usageType,
                 amount: "-$5.50",
                 status: t.billingPage.completed,
-                color: "text-[var(--text-main)]",
+                color: "text-text-main",
               },
             ].map((tx, i) => (
-              <div key={i} className="flex justify-between items-center py-2 border-b border-[var(--border-subtle)] last:border-0">
+              <div key={i} className="flex justify-between items-center py-2 border-b border-border-subtle last:border-0">
                 <div className="flex flex-col">
                   <span className="font-medium">{tx.type}</span>
-                  <span className="text-xs text-[var(--text-muted)]">{tx.date}</span>
+                  <span className="text-xs text-text-muted">{tx.date}</span>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className={`font-bold font-mono ${tx.color}`}>{tx.amount}</span>
-                  <span className="text-xs text-[var(--text-muted)]">{tx.status}</span>
+                  <span className="text-xs text-text-muted">{tx.status}</span>
                 </div>
               </div>
             ))}

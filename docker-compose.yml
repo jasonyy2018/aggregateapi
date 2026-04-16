@@ -14,5 +14,21 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aggregateapi_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Inject environment variables from host or override them here
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/aggregateapi?schema=public"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "super-secret-key-for-nextauth-dev"
+    depends_on:
+      - db
+
 volumes:
   pgdata:

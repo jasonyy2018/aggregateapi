@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { getPrisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
 
 const PAYPAL_CLIENT = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
@@ -23,6 +23,7 @@ async function generateAccessToken() {
 }
 
 export async function POST(req: Request) {
+  const prisma = getPrisma();
   try {
     const session = await auth();
     if (!session || !session.user) {

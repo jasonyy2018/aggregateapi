@@ -16,69 +16,69 @@ export function DashboardOverviewClient({
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           {t.dashboard.title}
         </h1>
-        <span className="text-sm text-[var(--text-muted)] hidden sm:inline">
+        <span className="text-sm text-text-muted hidden sm:inline">
           {t.dashboard.welcome} {userName?.split(" ")[0]}
         </span>
       </header>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-6 flex flex-col gap-2 hover:border-[var(--brand-primary)]/50 transition-colors shadow-sm">
-          <span className="text-sm text-[var(--text-muted)] font-medium">
+        <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 flex flex-col gap-2 hover:border-brand-primary/50 transition-colors shadow-sm">
+          <span className="text-sm text-text-muted font-medium">
             {t.dashboard.stats.balance}
           </span>
           <span className="text-4xl font-bold">$24.50</span>
-          <span className="text-xs text-[var(--brand-secondary)] cursor-pointer hover:underline">
+          <span className="text-xs text-brand-secondary cursor-pointer hover:underline">
             {t.dashboard.stats.topUp}
           </span>
         </div>
 
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-6 flex flex-col gap-2 hover:border-[var(--brand-primary)]/50 transition-colors shadow-sm">
-          <span className="text-sm text-[var(--text-muted)] font-medium">
+        <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 flex flex-col gap-2 hover:border-brand-primary/50 transition-colors shadow-sm">
+          <span className="text-sm text-text-muted font-medium">
             {t.dashboard.stats.requests}
           </span>
           <span className="text-4xl font-bold">45,231</span>
-          <span className="text-xs text-[var(--text-muted)]">
+          <span className="text-xs text-text-muted">
             {t.dashboard.stats.requestsSub}
           </span>
         </div>
 
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-6 flex flex-col gap-2 hover:border-[var(--brand-primary)]/50 transition-colors shadow-sm">
-          <span className="text-sm text-[var(--text-muted)] font-medium">
+        <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 flex flex-col gap-2 hover:border-brand-primary/50 transition-colors shadow-sm">
+          <span className="text-sm text-text-muted font-medium">
             {t.dashboard.stats.latency}
           </span>
-          <span className="text-4xl font-bold text-[var(--brand-secondary)]">
+          <span className="text-4xl font-bold text-brand-secondary">
             420ms
           </span>
-          <span className="text-xs text-[var(--text-muted)]">
+          <span className="text-xs text-text-muted">
             {t.dashboard.stats.latencySub}
           </span>
         </div>
       </div>
 
       {/* Recent Usage Logs */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-8 shadow-sm">
+      <div className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
         <h2 className="text-xl font-bold mb-6">{t.dashboard.usage.title}</h2>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[var(--border-subtle)]">
-                <th className="pb-4 text-sm font-medium text-[var(--text-muted)]">
+              <tr className="border-b border-border-subtle">
+                <th className="pb-4 text-sm font-medium text-text-muted">
                   {t.dashboard.usage.time}
                 </th>
-                <th className="pb-4 text-sm font-medium text-[var(--text-muted)]">
+                <th className="pb-4 text-sm font-medium text-text-muted">
                   {t.dashboard.usage.model}
                 </th>
-                <th className="pb-4 text-sm font-medium text-[var(--text-muted)]">
+                <th className="pb-4 text-sm font-medium text-text-muted">
                   {t.dashboard.usage.tokens}
                 </th>
-                <th className="pb-4 text-sm font-medium text-[var(--text-muted)] text-right">
+                <th className="pb-4 text-sm font-medium text-text-muted text-right">
                   {t.dashboard.usage.cost}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
+            <tbody className="divide-y divide-border-subtle">
               {[
                 {
                   time: "2 mins ago",
@@ -113,18 +113,18 @@ export function DashboardOverviewClient({
               ].map((row, i) => (
                 <tr
                   key={i}
-                  className="hover:bg-[var(--bg-surface-hover)] transition-colors"
+                  className="hover:bg-bg-surface-hover transition-colors"
                 >
-                  <td className="py-4 text-sm text-[var(--text-muted)]">
+                  <td className="py-4 text-sm text-text-muted">
                     {row.time}
                   </td>
                   <td className="py-4">
-                    <span className="px-2.5 py-1 bg-[var(--bg-main)] border border-[var(--border-subtle)] rounded-md text-xs font-mono">
+                    <span className="px-2.5 py-1 bg-bg-main border border-border-subtle rounded-md text-xs font-mono">
                       {row.model}
                     </span>
                   </td>
                   <td className="py-4 text-sm">{row.tokens}</td>
-                  <td className="py-4 text-sm text-[var(--brand-secondary)] text-right font-mono">
+                  <td className="py-4 text-sm text-brand-secondary text-right font-mono">
                     {row.cost}
                   </td>
                 </tr>

@@ -33,8 +33,9 @@ export function DashboardLayoutClient({
         <div className="flex items-center justify-between mb-12">
           <Link
             href="/"
-            className="text-2xl font-bold text-brand-primary tracking-tight hover:opacity-80 transition-opacity"
+            className="text-2xl font-bold text-brand-primary tracking-tight hover:opacity-80 transition-opacity flex items-center gap-3"
           >
+            <img src="/logo.jpg" alt="Logo" className="w-10 h-10 object-contain rounded-xl" />
             {t.nav.brand}
           </Link>
         </div>
@@ -63,14 +64,14 @@ export function DashboardLayoutClient({
           <div className="flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded bg-[var(--bg-surface-hover)] hover:bg-border-subtle transition-colors text-sm"
+              className="p-2 rounded bg-bg-surface-hover hover:bg-border-subtle transition-colors text-sm"
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? "🌙" : "☀️"}
             </button>
             <button
               onClick={() => setLocale(locale === "en" ? "zh" : "en")}
-              className="px-3 py-1.5 rounded bg-[var(--bg-surface-hover)] hover:bg-border-subtle transition-colors text-sm font-medium"
+              className="px-3 py-1.5 rounded bg-bg-surface-hover hover:bg-border-subtle transition-colors text-sm font-medium"
             >
               {locale === "en" ? "中文" : "EN"}
             </button>
