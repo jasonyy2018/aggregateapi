@@ -486,6 +486,86 @@ function ToggleSwitch({
   );
 }
 
+function PlatformSettingsCard({
+  settings,
+  onSaved,
+  onError,
+}: {
+  settings: PlatformSettingsView;
+  onSaved: (msg: string) => void;
+  onError: (msg: string) => void;
+}) {
+  const { t } = useLang();
+  const [isPending, startTransition] = useTransition();
+  const [form, setForm] = useState({
+    defaultMarginPct: Math.round(settings.defaultMarginPct * 100),
+    minMarginPct: Math.round(settings.minMarginPct * 100),
+    autoApplyMargin: settings.autoApplyMargin,
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const r = await updatePlatformSettings({
+        defaultMarginPct: form.defaultMarginPct / 100,
+        minMarginPct: form.minMarginPct / 100,
+        autoApplyMargin: form.autoApplyMargin,
+      });
+      if (r?.error) onError(r.error);
+      else onSaved(t.providers.saved);
+    });
+  };
+
+  return (
+    <div className="bg-bg-surface border border-border-subtle rounded-2xl p-5">
+      <h3 className="font-semibold text-text-main mb-1">{t.providers.settingsTitle}</h3>
+      <p className="text-sm text-text-muted mb-4">{t.providers.settingsDesc}</p>
+      <form onSubmit={submit} className="flex items-end gap-4 flex-wrap">
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-1">
+            {t.providers.defaultMarginLabel}
+          </label>
+          <input
+            type="number"
+            step="1"
+            className={inputClass + " w-28"}
+            value={form.defaultMarginPct}
+            onChange={(e) => setForm({ ...form, defaultMarginPct: Number(e.target.value) })}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-1">
+            {t.providers.minMarginLabel}
+          </label>
+          <input
+            type="number"
+            step="1"
+            className={inputClass + " w-28"}
+            value={form.minMarginPct}
+            onChange={(e) => setForm({ ...form, minMarginPct: Number(e.target.value) })}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-text-main pb-2">
+          <input
+            type="checkbox"
+            checked={form.autoApplyMargin}
+            onChange={(e) => setForm({ ...form, autoApplyMargin: e.target.checked })}
+            className="w-4 h-4"
+          />
+          {t.providers.autoApplyLabel}
+        </label>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="px-4 py-2 bg-brand-primary text-brand-primary-text rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isPending ? "..." : t.providers.settingsSave}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ProviderModal({
   mode,
   initial,
@@ -651,12 +731,14 @@ function ProviderModal({
 function ModelModal({
   providerId,
   initial,
+  defaults,
   onClose,
   onSaved,
   onError,
 }: {
   providerId: string;
   initial?: ModelView;
+  defaults?: PlatformSettingsView;
   onClose: () => void;
   onSaved: (msg: string) => void;
   onError: (msg: string) => void;
