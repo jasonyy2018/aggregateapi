@@ -29,6 +29,9 @@ services:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/aggregateapi?schema=public"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-https://aapi.togomol.com}"
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-super-secret-key-for-nextauth-dev}"
+      AUTH_SECRET: "${AUTH_SECRET:-super-secret-key-for-nextauth-dev}"
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: "${AUTH_URL:-https://aapi.togomol.com}"
       # Required for encrypting provider API keys at rest. CHANGE IN PRODUCTION.
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:-dev-only-encryption-key-change-me-in-production}"
       # Google OAuth
