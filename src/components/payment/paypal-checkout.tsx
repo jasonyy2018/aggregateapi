@@ -1,28 +1,56 @@
 "use client";
 
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLang } from "@/lib/lang-context";
 
 export default function PaypalCheckout({ amount, onSuccess }: { amount: number, onSuccess: () => void }) {
   const { t } = useLang();
   const [error, setError] = useState<string | null>(null);
+  const [config, setConfig] = useState<{ clientId: string; mode: string } | null>(null);
 
-  const initialOptions = {
-    clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "test",
-    currency: "USD",
-    intent: "capture",
-  };
+  useEffect(() => {
+    fetch("/api/payments/config")
+      .then(res => res.json())
+      .then(data => {
+        if (data.paypalClientId) {
+          setConfig({
+            clientId: data.paypalClientId,
+            mode: data.paypalMode || "sandbox"
+          });
+        } else {
+          setError("PayPal is not configured by administrator");
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load paypal config", err);
+        setError("Failed to initialize payment system");
+      });
+  }, []);
+
+  if (!config && !error) {
+    return <div className="animate-pulse bg-bg-surface h-12 rounded-lg" />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mt-4 min-h-[150px]">
-      {error && (
-        <div className="p-3 mb-4 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          {error}
-        </div>
-      )}
-      
-      <PayPalScriptProvider options={initialOptions}>
+      <PayPalScriptProvider options={{
+        clientId: config!.clientId,
+        currency: "USD",
+        intent: "capture",
+        // Pass the mode explicitly to react-paypal-js if needed, 
+        // though usually it's derived from the clientId.
+        // Forcing 'live' if configured:
+        "data-sdk-integration-source": "button-factory"
+      }}>
         <PayPalButtons
           style={{ layout: "vertical", color: "blue", shape: "rect", label: "pay" }}
           createOrder={async () => {

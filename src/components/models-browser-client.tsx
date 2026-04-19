@@ -132,9 +132,6 @@ export function ModelsBrowserClient({ providers }: { providers: ProviderRow[] })
     </div>
   );
 }
-    </div>
-  );
-}
 
 function FilterChip({
   active,
