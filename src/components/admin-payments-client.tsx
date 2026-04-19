@@ -41,7 +41,7 @@ export function AdminPaymentsClient({ settings }: { settings: PaymentSettingsVie
         alipayPrivateKey: form.alipayPrivateKey || undefined,
       });
       if (r?.error) showFlash("err", r.error);
-      else onSaved(t.providers.saved);
+      else showFlash("ok", t.providers.saved);
     });
   };
 
