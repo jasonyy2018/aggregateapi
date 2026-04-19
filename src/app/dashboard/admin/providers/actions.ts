@@ -347,6 +347,7 @@ export async function updatePlatformSettings(input: {
 }
 
 export type PaymentSettingsInput = {
+  paypalMode?: string;
   paypalClientId?: string;
   paypalSecret?: string;
   alipayAppId?: string;
@@ -359,6 +360,7 @@ export async function updatePaymentSettings(input: PaymentSettingsInput) {
     const prisma = await ensureAdmin();
     const data: any = {};
     
+    if (input.paypalMode !== undefined) data.paypalMode = input.paypalMode;
     if (input.paypalClientId !== undefined) data.paypalClientId = input.paypalClientId;
     if (input.paypalSecret) data.paypalSecretCipher = encryptSecret(input.paypalSecret);
     

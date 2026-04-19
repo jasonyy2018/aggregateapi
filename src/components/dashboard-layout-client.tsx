@@ -38,7 +38,7 @@ export function DashboardLayoutClient({
   return (
     <div className="flex h-screen bg-bg-main text-text-main font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-[280px] bg-bg-surface border-r border-border-subtle p-8 hidden md:flex flex-col shrink-0 z-10 transition-colors">
+      <aside className="w-[280px] bg-bg-surface border-r border-border-subtle p-8 hidden md:flex flex-col shrink-0 z-10 transition-colors overflow-y-auto">
         <div className="flex items-center justify-between mb-12">
           <Link
             href="/"

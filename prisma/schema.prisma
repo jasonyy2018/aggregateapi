@@ -163,6 +163,7 @@ model PlatformSetting {
   autoApplyMargin    Boolean  @default(true) // If true, importing a model auto-sets selling = cost * (1 + defaultMargin)
   
   // Payment Gateway Settings (Stored encrypted)
+  paypalMode         String   @default("sandbox") // "sandbox" or "live"
   paypalClientId     String?
   paypalSecretCipher String?
   alipayAppId        String?

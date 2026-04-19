@@ -6,26 +6,21 @@ export async function getPaypalConfig() {
   const settings = await prisma.platformSetting.findUnique({
     where: { id: "singleton" },
     select: {
+      paypalMode: true,
       paypalClientId: true,
       paypalSecretCipher: true,
     },
   });
 
+  const mode = settings?.paypalMode || (process.env.NODE_ENV === "production" ? "live" : "sandbox");
   const clientId = settings?.paypalClientId || process.env.PAYPAL_CLIENT_ID;
   let clientSecret = process.env.PAYPAL_CLIENT_SECRET;
 
-  if (settings?.paypalSecretCipher) {
-    try {
-      clientSecret = decryptSecret(settings.paypalSecretCipher);
-    } catch (e) {
-      console.error("[payment-config] Failed to decrypt PayPal secret:", e);
-    }
-  }
-
-  const isProd = process.env.NODE_ENV === "production";
-  const baseUrl = isProd ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+  // ... (rest of logic)
+  const baseUrl = mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 
   return {
+    mode,
     clientId,
     clientSecret,
     baseUrl,

@@ -16,6 +16,7 @@ export function AdminPaymentsClient({ settings }: { settings: PaymentSettingsVie
   const [flash, setFlash] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
   const [form, setForm] = useState({
+    paypalMode: (settings as any).paypalMode ?? "sandbox",
     paypalClientId: settings.paypalClientId ?? "",
     paypalSecret: "",
     alipayAppId: settings.alipayAppId ?? "",
@@ -32,6 +33,7 @@ export function AdminPaymentsClient({ settings }: { settings: PaymentSettingsVie
     e.preventDefault();
     startTransition(async () => {
       const r = await updatePaymentSettings({
+        paypalMode: form.paypalMode,
         paypalClientId: form.paypalClientId,
         paypalSecret: form.paypalSecret || undefined,
         alipayAppId: form.alipayAppId,
@@ -39,7 +41,7 @@ export function AdminPaymentsClient({ settings }: { settings: PaymentSettingsVie
         alipayPrivateKey: form.alipayPrivateKey || undefined,
       });
       if (r?.error) showFlash("err", r.error);
-      else showFlash("ok", t.providers.saved);
+      else onSaved(t.providers.saved);
     });
   };
 
@@ -68,6 +70,20 @@ export function AdminPaymentsClient({ settings }: { settings: PaymentSettingsVie
             </div>
           </div>
           
+          <div className="grid grid-cols-1 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-text-main mb-2">{t.providers.paypalMode}</label>
+              <select
+                className={inputClass}
+                value={form.paypalMode}
+                onChange={(e) => setForm({ ...form, paypalMode: e.target.value })}
+              >
+                <option value="sandbox">{t.providers.paypalModeSandbox}</option>
+                <option value="live">{t.providers.paypalModeLive}</option>
+              </select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-text-main mb-2">{t.providers.paypalClientId}</label>
