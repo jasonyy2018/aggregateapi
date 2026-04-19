@@ -1,9 +1,7 @@
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
-const prisma = new PrismaClient({
-  datasourceUrl: "postgresql://postgres:postgres@localhost:5432/aggregateapi?schema=public"
-})
+const prisma = new PrismaClient()
 
 async function main() {
   const email = "admin@aggregateapi.com"
