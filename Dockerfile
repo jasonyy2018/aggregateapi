@@ -27,7 +27,7 @@ COPY . .
 # Generate Prisma Client (schema-aware)
 RUN pnpm exec prisma generate
 
-# Build Next.js in standalone mode (see next.config.ts)
+# Build Next.js in standalone mode
 RUN pnpm run build
 
 # ---------- Runner (minimal prod image) ----------
@@ -51,21 +51,17 @@ RUN mkdir .next && chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma schema + generated client (needed for db push at startup)
+# Prisma schema (needed for db push at startup)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy entrypoint and admin scripts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/ensure-admin.js ./scripts/ensure-admin.js
 RUN chmod +x ./scripts/entrypoint.sh
 
-# Install runtime-only dependencies needed by entrypoint scripts (as root, before switching user)
-RUN npm install --no-save pg bcryptjs prisma@6 2>/dev/null || true
-
-# Fix ownership of anything npm installed
-RUN chown -R nextjs:nodejs /app/node_modules 2>/dev/null || true
+# Install runtime-only dependencies needed by entrypoint scripts
+# This ensures we have the Prisma CLI and database drivers in the runner environment
+RUN npm install --no-save pg bcryptjs prisma@6
 
 USER nextjs
 EXPOSE 3000
