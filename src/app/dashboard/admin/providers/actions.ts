@@ -346,6 +346,39 @@ export async function updatePlatformSettings(input: {
   }
 }
 
+export type PaymentSettingsInput = {
+  paypalClientId?: string;
+  paypalSecret?: string;
+  alipayAppId?: string;
+  alipayPublicKey?: string;
+  alipayPrivateKey?: string;
+};
+
+export async function updatePaymentSettings(input: PaymentSettingsInput) {
+  try {
+    const prisma = await ensureAdmin();
+    const data: any = {};
+    
+    if (input.paypalClientId !== undefined) data.paypalClientId = input.paypalClientId;
+    if (input.paypalSecret) data.paypalSecretCipher = encryptSecret(input.paypalSecret);
+    
+    if (input.alipayAppId !== undefined) data.alipayAppId = input.alipayAppId;
+    if (input.alipayPublicKey !== undefined) data.alipayPublicKey = input.alipayPublicKey;
+    if (input.alipayPrivateKey) data.alipayPrivateKeyCipher = encryptSecret(input.alipayPrivateKey);
+
+    await prisma.platformSetting.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton", ...data },
+      update: data,
+    });
+
+    revalidatePath("/dashboard/admin/providers");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
 export async function deleteProviderModel(modelId: string) {
   try {
     const prisma = await ensureAdmin();
@@ -362,6 +395,21 @@ export async function toggleProviderModelEnabled(modelId: string, isEnabled: boo
   try {
     const prisma = await ensureAdmin();
     await prisma.providerModel.update({ where: { id: modelId }, data: { isEnabled } });
+    revalidatePath("/dashboard/admin/providers");
+    revalidatePath("/dashboard/models");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function toggleBulkModelsEnabled(providerId: string, isEnabled: boolean) {
+  try {
+    const prisma = await ensureAdmin();
+    await prisma.providerModel.updateMany({
+      where: { providerId },
+      data: { isEnabled }
+    });
     revalidatePath("/dashboard/admin/providers");
     revalidatePath("/dashboard/models");
     return { success: true };

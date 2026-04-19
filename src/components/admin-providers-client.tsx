@@ -11,11 +11,13 @@ import {
   updateProviderModel,
   deleteProviderModel,
   toggleProviderModelEnabled,
+  toggleBulkModelsEnabled,
   testProviderConnection,
   importProviderModels,
   applyMarginToProvider,
   applyMarginToModel,
   updatePlatformSettings,
+  updatePaymentSettings,
 } from "@/app/dashboard/admin/providers/actions";
 import { computeMargin, applyMargin } from "@/lib/pricing";
 
@@ -43,6 +45,10 @@ type PlatformSettingsView = {
   defaultMarginPct: number;
   minMarginPct: number;
   autoApplyMargin: boolean;
+  // Payment settings
+  paypalClientId?: string | null;
+  alipayAppId?: string | null;
+  alipayPublicKey?: string | null;
 };
 
 type ProviderView = {
@@ -158,6 +164,16 @@ export function AdminProvidersClient({
       else flash("ok", t.providers.saved);
     });
 
+  const onToggleBulkModels = (p: ProviderView, isEnabled: boolean) => {
+    const msg = isEnabled ? t.providers.confirmEnableAll : t.providers.confirmDisableAll;
+    if (!confirm(msg)) return;
+    startTransition(async () => {
+      const r = await toggleBulkModelsEnabled(p.id, isEnabled);
+      if (r?.error) flash("err", r.error);
+      else flash("ok", t.providers.saved);
+    });
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -187,11 +203,18 @@ export function AdminProvidersClient({
         </div>
       )}
 
-      <PlatformSettingsCard
-        settings={settings}
-        onSaved={(msg) => flash("ok", msg)}
-        onError={(e) => flash("err", e)}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PlatformSettingsCard
+          settings={settings}
+          onSaved={(msg) => flash("ok", msg)}
+          onError={(e) => flash("err", e)}
+        />
+        <PaymentSettingsCard
+          settings={settings}
+          onSaved={(msg) => flash("ok", msg)}
+          onError={(e) => flash("err", e)}
+        />
+      </div>
 
       {providers.length === 0 && (
         <div className="bg-bg-surface border border-border-subtle rounded-2xl p-12 text-center text-text-muted">
@@ -292,6 +315,20 @@ export function AdminProvidersClient({
                         className="px-3 py-1.5 rounded-md bg-bg-surface-hover hover:bg-border-subtle text-sm font-medium text-text-muted transition-colors disabled:opacity-50"
                       >
                         {t.providers.applyMargin}
+                      </button>
+                      <button
+                        onClick={() => onToggleBulkModels(p, true)}
+                        disabled={isPending || p.models.length === 0}
+                        className="px-3 py-1.5 rounded-md bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20 text-sm font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {t.providers.bulkEnable}
+                      </button>
+                      <button
+                        onClick={() => onToggleBulkModels(p, false)}
+                        disabled={isPending || p.models.length === 0}
+                        className="px-3 py-1.5 rounded-md bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {t.providers.bulkDisable}
                       </button>
                       <button
                         onClick={() => onImport(p)}
@@ -936,6 +973,104 @@ function ModalActions({
       >
         {disabled ? "..." : submitLabel}
       </button>
+    </div>
+  );
+}
+
+function PaymentSettingsCard({
+  settings,
+  onSaved,
+  onError,
+}: {
+  settings: PlatformSettingsView;
+  onSaved: (msg: string) => void;
+  onError: (msg: string) => void;
+}) {
+  const { t } = useLang();
+  const [isPending, startTransition] = useTransition();
+  const [form, setForm] = useState({
+    paypalClientId: settings.paypalClientId ?? "",
+    paypalSecret: "",
+    alipayAppId: settings.alipayAppId ?? "",
+    alipayPublicKey: settings.alipayPublicKey ?? "",
+    alipayPrivateKey: "",
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const r = await updatePaymentSettings({
+        paypalClientId: form.paypalClientId,
+        paypalSecret: form.paypalSecret || undefined,
+        alipayAppId: form.alipayAppId,
+        alipayPublicKey: form.alipayPublicKey,
+        alipayPrivateKey: form.alipayPrivateKey || undefined,
+      });
+      if (r?.error) onError(r.error);
+      else onSaved(t.providers.saved);
+    });
+  };
+
+  return (
+    <div className="bg-bg-surface border border-border-subtle rounded-2xl p-5">
+      <h3 className="font-semibold text-text-main mb-1">{t.providers.paymentSettingsTitle}</h3>
+      <p className="text-sm text-text-muted mb-4">{t.providers.paymentSettingsDesc}</p>
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1">{t.providers.paypalClientId}</label>
+            <input
+              className={inputClass}
+              value={form.paypalClientId}
+              onChange={(e) => setForm({ ...form, paypalClientId: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1">{t.providers.paypalSecret}</label>
+            <input
+              type="password"
+              className={inputClass}
+              value={form.paypalSecret}
+              onChange={(e) => setForm({ ...form, paypalSecret: e.target.value })}
+              placeholder={t.providers.leaveEmptyToKeep}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-1">{t.providers.alipayAppId}</label>
+          <input
+            className={inputClass}
+            value={form.alipayAppId}
+            onChange={(e) => setForm({ ...form, alipayAppId: e.target.value })}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1">{t.providers.alipayPublicKey}</label>
+            <textarea
+              className={inputClass + " h-20 text-xs font-mono"}
+              value={form.alipayPublicKey}
+              onChange={(e) => setForm({ ...form, alipayPublicKey: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1">{t.providers.alipayPrivateKey}</label>
+            <textarea
+              className={inputClass + " h-20 text-xs font-mono"}
+              value={form.alipayPrivateKey}
+              onChange={(e) => setForm({ ...form, alipayPrivateKey: e.target.value })}
+              placeholder={t.providers.leaveEmptyToKeep}
+            />
+          </div>
+        </div>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="px-4 py-2 bg-brand-primary text-brand-primary-text rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 mt-2"
+        >
+          {isPending ? "..." : t.providers.settingsSave}
+        </button>
+      </form>
     </div>
   );
 }

@@ -161,6 +161,14 @@ model PlatformSetting {
   defaultMarginPct   Float    @default(0.20) // 20% minimum margin enforced on pricing
   minMarginPct       Float    @default(0.20) // Hard floor; admin cannot save a model below this
   autoApplyMargin    Boolean  @default(true) // If true, importing a model auto-sets selling = cost * (1 + defaultMargin)
+  
+  // Payment Gateway Settings (Stored encrypted)
+  paypalClientId     String?
+  paypalSecretCipher String?
+  alipayAppId        String?
+  alipayPublicKey    String?
+  alipayPrivateKeyCipher String?
+
   updatedAt          DateTime @updatedAt
   updatedBy          String?
 }
