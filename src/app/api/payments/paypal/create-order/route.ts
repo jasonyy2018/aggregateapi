@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 const PAYPAL_CLIENT = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-const base = "https://api-m.sandbox.paypal.com";
+const IS_PROD = process.env.NODE_ENV === "production";
+const base = IS_PROD ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 
 // Helper to generate access token
 async function generateAccessToken() {
