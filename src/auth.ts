@@ -48,38 +48,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
      * when signing in via Google OAuth for the first time.
      */
     async signIn({ user, account }) {
-      if (account?.provider === "google" && user.email) {
+      if (account?.provider === "google") {
         try {
           const prisma = getPrisma();
-          // Check if user already exists
-          let dbUser = await prisma.user.findUnique({
-            where: { email: user.email },
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email! },
           });
 
           if (!dbUser) {
-            // First-time Google sign-in: create user
-            dbUser = await prisma.user.create({
+            await prisma.user.create({
               data: {
-                email: user.email,
-                name: user.name ?? user.email.split("@")[0],
-                image: user.image ?? null,
-                emailVerified: new Date(),
+                email: user.email!,
+                name: user.name || "",
+                image: user.image || "",
+                role: "USER",
                 balance: 0,
               },
             });
-          } else {
-            // Existing user: update profile if needed
-            if (user.image && user.image !== dbUser.image) {
-              await prisma.user.update({
-                where: { id: dbUser.id },
-                data: {
-                  image: user.image,
-                  name: user.name ?? dbUser.name,
-                },
-              });
-            }
-          }
-
           // Store DB user id on the user object so jwt() can read it
           user.id = dbUser.id;
 

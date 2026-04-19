@@ -1,17 +1,26 @@
 #!/bin/sh
-set -e
 
-echo "[entrypoint] Syncing database schema with Prisma..."
-# Use db push since we don't have migration files — this creates/updates tables
-# to match the Prisma schema without requiring a migrations directory.
-npx prisma db push --skip-generate --accept-data-loss 2>&1 || {
-  echo "[entrypoint] WARNING: prisma db push failed, retrying in 3s..."
-  sleep 3
-  npx prisma db push --skip-generate --accept-data-loss 2>&1 || echo "[entrypoint] prisma db push failed again — continuing anyway"
-}
+echo "--- Starting Entrypoint Script ---"
 
-echo "[entrypoint] Ensuring admin user exists..."
-node /app/scripts/ensure-admin.js || echo "[entrypoint] Admin setup skipped"
+# 1. Sync database schema
+echo "Running: npx prisma db push"
+npx prisma db push --accept-data-loss
 
-echo "[entrypoint] Starting Next.js server..."
-exec node server.js
+if [ $? -ne 0 ]; then
+  echo "Error: prisma db push failed!"
+  # We don't exit here to allow the app to try and start, but this is a bad sign.
+fi
+
+# 2. Ensure Admin User
+echo "Running: node scripts/ensure-admin.js"
+node scripts/ensure-admin.js
+
+# 3. Start the application
+# In Next.js standalone mode, we run node server.js
+echo "Starting Next.js Server..."
+if [ -f "server.js" ]; then
+  exec node server.js
+else
+  # Fallback for non-standalone or dev
+  exec npm start
+fi
