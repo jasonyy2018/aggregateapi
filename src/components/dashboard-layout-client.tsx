@@ -109,11 +109,12 @@ export function DashboardLayoutClient({
             </div>
           </div>
 
-          <form action={signOutAction}>
+          <form action={signOutAction} className="w-full">
             <button
               type="submit"
-              className="w-full text-left text-sm text-text-muted hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer py-1"
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-500/10 rounded-lg transition-colors group"
             >
+              <span className="text-lg group-hover:scale-110 transition-transform">󰍃</span>
               {t.dashboard.signOut}
             </button>
           </form>

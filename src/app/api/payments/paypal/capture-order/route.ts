@@ -1,23 +1,25 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { auth } from '@/auth';
+import { getPaypalConfig } from '@/lib/payment-config';
 
 export const dynamic = 'force-dynamic';
 
-const PAYPAL_CLIENT = process.env.PAYPAL_CLIENT_ID;
-const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-const IS_PROD = process.env.NODE_ENV === "production";
-const base = IS_PROD ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
-
-async function generateAccessToken() {
-  const auth = Buffer.from(`${PAYPAL_CLIENT}:${PAYPAL_SECRET}`).toString("base64");
-  const response = await fetch(`${base}/v1/oauth2/token`, {
+async function generateAccessToken(clientId: string, clientSecret: string, baseUrl: string) {
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const response = await fetch(`${baseUrl}/v1/oauth2/token`, {
     method: "POST",
     body: "grant_type=client_credentials",
     headers: {
       Authorization: `Basic ${auth}`,
     },
   });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`PayPal Auth Failed: ${errText}`);
+  }
+
   const data = await response.json();
   return data.access_token;
 }
@@ -25,6 +27,11 @@ async function generateAccessToken() {
 export async function POST(req: Request) {
   const prisma = getPrisma();
   try {
+    const config = await getPaypalConfig();
+    if (!config.clientId || !config.clientSecret) {
+      throw new Error("PayPal credentials not configured");
+    }
+
     const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,8 +39,8 @@ export async function POST(req: Request) {
 
     const { orderID } = await req.json();
 
-    const accessToken = await generateAccessToken();
-    const url = `${base}/v2/checkout/orders/${orderID}/capture`;
+    const accessToken = await generateAccessToken(config.clientId, config.clientSecret, config.baseUrl);
+    const url = `${config.baseUrl}/v2/checkout/orders/${orderID}/capture`;
 
     const response = await fetch(url, {
       method: "POST",
