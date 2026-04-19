@@ -6,7 +6,14 @@ declare global {
 
 export const getPrisma = (): PrismaClient => {
   if (!globalThis.prismaGlobal) {
-    globalThis.prismaGlobal = new PrismaClient()
+    globalThis.prismaGlobal = new PrismaClient({
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/aggregateapi?schema=public",
+        },
+      },
+      log: ['error', 'warn'],
+    })
   }
   return globalThis.prismaGlobal
 }

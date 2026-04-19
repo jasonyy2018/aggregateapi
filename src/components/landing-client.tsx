@@ -163,8 +163,11 @@ export function LandingClient({
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border-subtle py-8 px-8 text-center text-sm text-text-muted">
-        {t.landing.footer}
+      <footer className="relative z-10 border-t border-border-subtle py-8 px-8 flex flex-col items-center gap-3 text-center text-sm text-text-muted">
+        <div>{t.landing.footer}</div>
+        <Link href="/admin/login" className="text-xs opacity-50 hover:opacity-100 hover:text-brand-primary transition-all">
+          Admin Portal
+        </Link>
       </footer>
     </div>
   );

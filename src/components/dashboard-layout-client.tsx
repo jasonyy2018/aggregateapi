@@ -10,21 +10,29 @@ export function DashboardLayoutClient({
   children,
   user,
   signOutAction,
+  isAdmin = false,
 }: {
   children: ReactNode;
   user: { name?: string | null; email?: string | null; image?: string | null };
   signOutAction: () => void;
+  isAdmin?: boolean;
 }) {
   const { t, locale, setLocale } = useLang();
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
 
-  const navItems = [
+  const navItems: { label: string; href: string }[] = [
     { label: t.dashboard.overview, href: "/dashboard" },
+    { label: t.dashboard.models, href: "/dashboard/models" },
     { label: t.dashboard.apiKeys, href: "/dashboard/keys" },
     { label: t.dashboard.billing, href: "/dashboard/billing" },
     { label: t.dashboard.settings, href: "/dashboard/settings" },
   ];
+
+  if (isAdmin) {
+    navItems.push({ label: t.dashboard.admin, href: "/dashboard/admin" });
+    navItems.push({ label: t.dashboard.adminProviders, href: "/dashboard/admin/providers" });
+  }
 
   return (
     <div className="flex h-screen bg-bg-main text-text-main font-sans overflow-hidden">

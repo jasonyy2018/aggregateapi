@@ -1,124 +1,184 @@
-import { NextResponse } from 'next/server';
-import { getPrisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { getPrisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/crypto";
+import { forwardChatCompletion, type OpenAIChatBody } from "@/lib/llm-gateway";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// A simple implementation of the chat completions API Gateway
+/**
+ * OpenAI-compatible /v1/chat/completions gateway.
+ * Routes incoming requests to the correct upstream provider based on the
+ * admin-configured Provider/ProviderModel tables.
+ */
 export async function POST(req: Request) {
   const prisma = getPrisma();
   try {
-    // 1. Verify Authorization
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
+    // 1. Auth
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
     }
-
-    const token = authHeader.split(' ')[1];
-    
-    // Check key in DB
+    const token = authHeader.slice(7).trim();
     const apiKey = await prisma.apiKey.findUnique({
       where: { key: token },
-      include: { user: true }
+      include: { user: true },
     });
-
     if (!apiKey || !apiKey.isActive) {
-      return NextResponse.json({ error: 'Invalid or inactive API Key' }, { status: 401 });
+      return NextResponse.json({ error: "Invalid or inactive API Key" }, { status: 401 });
     }
-
     const user = apiKey.user;
-
-    // 2. Check Balance
-    // Assuming cost per token is very low, requiring at least $0.01
-    if (user.balance < 0.01) {
-      return NextResponse.json({ error: 'Insufficient balance' }, { status: 402 });
+    if (user.isBanned) {
+      return NextResponse.json({ error: "Your account has been suspended" }, { status: 403 });
+    }
+    if (user.balance < 0.0001) {
+      return NextResponse.json({ error: "Insufficient balance" }, { status: 402 });
     }
 
-    // 3. Parse Request
-    const body = await req.json();
-    let requestedModel = body.model || 'openai/gpt-4o';
-    let provider = 'openrouter';
-
-    // 4. Model Routing Engine (Simple version)
-    // If user specifies a cheap generic name, route to Together
-    const togetherModels = ['meta-llama/Llama-3-8b-chat-hf', 'mistralai/Mixtral-8x7B-Instruct-v0.1'];
-    
-    let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-    let apiToken = process.env.OPENROUTER_API_KEY;
-
-    if (body.model === 'cheapest' || togetherModels.includes(body.model)) {
-      provider = 'together';
-      apiUrl = 'https://api.together.xyz/v1/chat/completions';
-      apiToken = process.env.TOGETHER_API_KEY;
-      requestedModel = body.model === 'cheapest' ? 'meta-llama/Llama-3-8b-chat-hf' : body.model;
+    // 2. Parse body
+    const body = (await req.json()) as OpenAIChatBody;
+    const requestedModel = body?.model;
+    if (!requestedModel) {
+      return NextResponse.json({ error: "Missing 'model' field" }, { status: 400 });
     }
 
-    // Rewrite model in the body
-    const payload = { ...body, model: requestedModel };
+    // 3. Resolve model -> provider
+    // Support two addressing schemes:
+    //   - "provider-slug/model-id"   (explicit, Cherry Studio / OpenRouter style)
+    //   - "model-id"                 (first enabled match)
+    let resolved = null as Awaited<ReturnType<typeof resolveModel>>;
+    resolved = await resolveModel(prisma, requestedModel);
+    if (!resolved) {
+      return NextResponse.json(
+        {
+          error: `Model '${requestedModel}' is not available. Visit the dashboard /dashboard/models to see available models.`,
+        },
+        { status: 404 }
+      );
+    }
+    const { provider, model } = resolved;
 
-    // 5. Forward to downstream Provider
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    if (!provider.apiKeyCipher) {
+      return NextResponse.json(
+        { error: `Provider '${provider.name}' has no API key configured` },
+        { status: 503 }
+      );
+    }
+
+    // 4. Forward
+    const upstreamKey = decryptSecret(provider.apiKeyCipher);
+    const { streaming, response, usage } = await forwardChatCompletion({
+      provider,
+      apiKey: upstreamKey,
+      upstreamModelId: model.modelId,
+      body,
     });
 
-    // Handle Streaming vs Non-streaming
-    if (payload.stream) {
-      // NOTE: Stream requires tracking tokens inside the chunk parsing,
-      // For MVP, we pass the stream directly. In production, we need a stream wrapper to calculate usage.
-      return new Response(response.body, {
-        headers: {
-          'Content-Type': 'text/event-stream'
-        }
+    // 5. Bill & log
+    if (streaming) {
+      // For MVP we do not tap into stream bodies to count tokens;
+      // we instead charge a minimum per-request fee using max_tokens heuristic,
+      // and let future iterations parse the stream.
+      const promptEstimate = estimatePromptTokens(body);
+      const outputEstimate = Math.min(body.max_tokens ?? 512, 1024);
+      const cost = computeCost(promptEstimate, outputEstimate, model);
+      void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate + outputEstimate, cost);
+      return response;
+    }
+
+    if (usage) {
+      const cost = computeCost(usage.input, usage.output, model);
+      await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, usage.total, cost);
+    } else {
+      // Just touch lastUsedAt
+      await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
+    }
+
+    return response;
+  } catch (err: any) {
+    console.error("Gateway error:", err);
+    return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
+  }
+}
+
+// ----- helpers -----
+
+async function resolveModel(prisma: ReturnType<typeof getPrisma>, requested: string) {
+  // 1. Try "slug/modelId" form
+  const slashIdx = requested.indexOf("/");
+  if (slashIdx > 0) {
+    const slug = requested.slice(0, slashIdx);
+    const modelId = requested.slice(slashIdx + 1);
+    const prov = await prisma.provider.findUnique({ where: { slug } });
+    if (prov && prov.isEnabled) {
+      const m = await prisma.providerModel.findFirst({
+        where: { providerId: prov.id, modelId, isEnabled: true },
       });
+      if (m) return { provider: prov, model: m };
     }
+  }
+  // 2. Fallback: find first enabled model globally
+  const m = await prisma.providerModel.findFirst({
+    where: { modelId: requested, isEnabled: true, provider: { isEnabled: true } },
+    include: { provider: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+  if (m) return { provider: m.provider, model: m };
+  return null;
+}
 
-    const data = await response.json();
+function computeCost(
+  promptTokens: number,
+  completionTokens: number,
+  model: { inputPricePer1k: number; outputPricePer1k: number }
+): number {
+  return (
+    (promptTokens / 1000) * model.inputPricePer1k +
+    (completionTokens / 1000) * model.outputPricePer1k
+  );
+}
 
-    // 6. Calculate tokens and deduct balance
-    if (data.usage) {
-      const totalTokens = data.usage.total_tokens || 0;
-      // Define selling price (e.g. $0.002 per 1k tokens)
-      let pricePer1k = 0.002; 
-      
-      // Dynamic pricing based on model could be added here
-      if (provider === 'together') {
-        pricePer1k = 0.0005; // Cheaper
-      }
-
-      const cost = (totalTokens / 1000) * pricePer1k;
-
-      // Ensure deduct happens asynchronously or before returning
-      // Wait for it in this MVP
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: user.id },
-          data: { balance: { decrement: cost } }
-        }),
-        prisma.usageLog.create({
-          data: {
-            userId: user.id,
-            model: requestedModel,
-            provider: provider,
-            tokens: totalTokens,
-            cost: cost
-          }
-        }),
-        prisma.apiKey.update({
-          where: { id: apiKey.id },
-          data: { lastUsedAt: new Date() }
-        })
-      ]);
+function estimatePromptTokens(body: OpenAIChatBody): number {
+  // Very rough: ~1 token per 4 chars of text
+  let chars = 0;
+  for (const m of body.messages || []) {
+    if (typeof m.content === "string") chars += m.content.length;
+    else if (Array.isArray(m.content)) {
+      for (const p of m.content) if (p && typeof (p as any).text === "string") chars += (p as any).text.length;
     }
+  }
+  return Math.max(1, Math.ceil(chars / 4));
+}
 
-    // 7. Return Result
-    return NextResponse.json(data, { status: response.status });
-
-  } catch (error: any) {
-    console.error('API Gateway Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+async function chargeUser(
+  prisma: ReturnType<typeof getPrisma>,
+  apiKeyId: string,
+  userId: string,
+  providerSlug: string,
+  modelId: string,
+  totalTokens: number,
+  cost: number
+) {
+  try {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { balance: { decrement: cost } },
+      }),
+      prisma.usageLog.create({
+        data: {
+          userId,
+          model: modelId,
+          provider: providerSlug,
+          tokens: totalTokens,
+          cost,
+        },
+      }),
+      prisma.apiKey.update({
+        where: { id: apiKeyId },
+        data: { lastUsedAt: new Date() },
+      }),
+    ]);
+  } catch (e) {
+    console.error("chargeUser failed:", e);
   }
 }

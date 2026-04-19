@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -14,6 +15,7 @@ model User {
   image         String?
   password      String?
   role          UserRole  @default(USER)
+  isBanned      Boolean   @default(false)
   balance       Float     @default(0.0) // 余额
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -88,6 +90,56 @@ model UsageLog {
   createdAt      DateTime @default(now())
 
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --- LLM Provider Management ---
+// A third-party LLM vendor (OpenAI, Anthropic, OpenRouter, DeepSeek, etc.)
+model Provider {
+  id             String         @id @default(cuid())
+  name           String         // Display name, e.g. "OpenAI", "DeepSeek"
+  slug           String         @unique // URL-safe id, e.g. "openai", "deepseek"
+  protocol       ProviderProtocol @default(OPENAI)
+  baseUrl        String         // e.g. https://api.openai.com/v1
+  apiKeyCipher   String?        // AES-256-GCM encrypted API key; null means none stored yet
+  apiKeyHint     String?        // last 4 chars for UI display (sk-***abcd)
+  logoUrl        String?
+  description    String?
+  isEnabled      Boolean        @default(true)   // Admin-level toggle (master switch)
+  sortOrder      Int            @default(0)
+  extraHeaders   Json?          // Optional custom headers (JSON object)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  models         ProviderModel[]
+}
+
+enum ProviderProtocol {
+  OPENAI      // OpenAI-compatible /v1/chat/completions
+  ANTHROPIC   // Native Anthropic /v1/messages
+  GEMINI      // Google Generative AI generateContent
+}
+
+// A specific model exposed by a Provider. Only models with isEnabled=true
+// on both the Provider and the ProviderModel will be visible to end-users.
+model ProviderModel {
+  id                String   @id @default(cuid())
+  providerId        String
+  modelId           String   // The exact id sent to the upstream API, e.g. "gpt-4o-mini"
+  displayName       String   // Friendly name shown in UI
+  description       String?
+  contextLength     Int?     // Max context window tokens
+  inputPricePer1k   Float    @default(0)   // Platform selling price (USD per 1k input tokens)
+  outputPricePer1k  Float    @default(0)   // Platform selling price (USD per 1k output tokens)
+  isEnabled         Boolean  @default(true)
+  sortOrder         Int      @default(0)
+  capabilities      String[] @default([]) // e.g. ["vision", "tools", "json"]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  provider          Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, modelId])
+  @@index([isEnabled])
 }
 
 model BillingTransaction {
