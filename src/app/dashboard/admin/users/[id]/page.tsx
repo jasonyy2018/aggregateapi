@@ -10,11 +10,23 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
 
   const prisma = getPrisma();
   
-  // Auth Check
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true }
-  });
+  // Auth Check — try by id then email
+  let currentUser: { role: string } | null = null;
+  try {
+    currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true }
+    });
+    if (!currentUser && session.user.email) {
+      currentUser = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { role: true }
+      });
+    }
+  } catch (err) {
+    console.error("[admin/users] DB error:", err);
+    redirect("/dashboard");
+  }
 
   if (currentUser?.role !== "ADMIN") {
     redirect("/dashboard");

@@ -1,20 +1,15 @@
 # syntax=docker/dockerfile:1.7
 
 # ---------- Base ----------
-# Next.js 16 requires Node >= 20.9; 20-alpine is LTS and small.
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
-# Enable pnpm via corepack (shipped with Node 20+). No global install needed.
 RUN corepack enable
 WORKDIR /app
 
 # ---------- Dependencies ----------
 FROM base AS deps
-# The prisma schema is needed because `postinstall` runs `prisma generate`.
 COPY package.json pnpm-lock.yaml* .npmrc* ./
 COPY prisma ./prisma
-# Use a persistent pnpm store cache to speed up rebuilds.
-# Falls back gracefully when no pnpm-lock.yaml is present (first run).
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     if [ -f pnpm-lock.yaml ]; then \
       pnpm install --frozen-lockfile; \
@@ -56,16 +51,21 @@ RUN mkdir .next && chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma engines required at runtime (copied in by standalone, but the schema is useful for migrations)
+# Prisma schema + generated client (needed for db push at startup)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy entrypoint and admin script
+# Copy entrypoint and admin scripts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/ensure-admin.js ./scripts/ensure-admin.js
 RUN chmod +x ./scripts/entrypoint.sh
 
-# Install runtime-only dependencies needed by entrypoint scripts
+# Install runtime-only dependencies needed by entrypoint scripts (as root, before switching user)
 RUN npm install --no-save pg bcryptjs prisma@6 2>/dev/null || true
+
+# Fix ownership of anything npm installed
+RUN chown -R nextjs:nodejs /app/node_modules 2>/dev/null || true
 
 USER nextjs
 EXPOSE 3000

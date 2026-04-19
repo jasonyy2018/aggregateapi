@@ -14,10 +14,17 @@ async function ensureAdmin() {
   if (!session?.user) throw new Error("Unauthorized");
 
   const prisma = getPrisma();
-  const dbUser = await prisma.user.findUnique({
+  let dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true },
   });
+  // Fallback: lookup by email
+  if (!dbUser && session.user.email) {
+    dbUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { role: true },
+    });
+  }
   if (dbUser?.role !== "ADMIN") {
     throw new Error("Forbidden: Admin privileges required");
   }

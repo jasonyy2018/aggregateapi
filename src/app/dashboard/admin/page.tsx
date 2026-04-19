@@ -10,12 +10,26 @@ export default async function AdminDashboardPage() {
   if (!session?.user) redirect("/")
 
   const prisma = getPrisma()
-  const userRole = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true }
-  })
 
-  // Basic RBAC
+  // Check admin role - try both by id and email
+  let userRole: { role: string } | null = null;
+  try {
+    userRole = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true }
+    });
+    // Fallback: lookup by email
+    if (!userRole && session.user.email) {
+      userRole = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { role: true }
+      });
+    }
+  } catch (err) {
+    console.error("[admin] DB error checking role:", err);
+    redirect("/dashboard");
+  }
+
   if (userRole?.role !== "ADMIN") {
     redirect("/dashboard")
   }
@@ -24,34 +38,42 @@ export default async function AdminDashboardPage() {
   const locale = cookieStore.get("NEXT_LOCALE")?.value === "zh" ? "zh" : "en"
   const t = dictionaries[locale]
 
-  // Compute Aggregations
-  // 1. Total Users
-  const totalUsers = await prisma.user.count()
-  
-  // 2. Total Revenue (amount sum of SUCCESS topups)
-  const revenueAgg = await prisma.billingTransaction.aggregate({
-    _sum: { amount: true },
-    where: { status: "SUCCESS", type: "TOPUP" }
-  })
-  const totalRevenue = revenueAgg._sum.amount || 0
+  // Compute Aggregations — wrapped in try/catch for resilience
+  let totalUsers = 0;
+  let totalRevenue = 0;
+  let totalTokens = 0;
+  let activeKeys = 0;
+  let recentUsers: Array<{
+    id: string; name: string | null; email: string | null;
+    role: string; balance: number; isBanned: boolean; createdAt: Date;
+  }> = [];
 
-  // 3. Total Tokens
-  const tokenAgg = await prisma.usageLog.aggregate({
-    _sum: { tokens: true }
-  })
-  const totalTokens = tokenAgg._sum.tokens || 0
+  try {
+    totalUsers = await prisma.user.count()
 
-  // 4. Active API Keys
-  const activeKeys = await prisma.apiKey.count({
-    where: { isActive: true }
-  })
+    const revenueAgg = await prisma.billingTransaction.aggregate({
+      _sum: { amount: true },
+      where: { status: "SUCCESS", type: "TOPUP" }
+    })
+    totalRevenue = revenueAgg._sum.amount || 0
 
-  // 5. Recent Users (or top 50 users)
-  const recentUsers = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: { id: true, name: true, email: true, role: true, balance: true, isBanned: true, createdAt: true }
-  })
+    const tokenAgg = await prisma.usageLog.aggregate({
+      _sum: { tokens: true }
+    })
+    totalTokens = tokenAgg._sum.tokens || 0
+
+    activeKeys = await prisma.apiKey.count({
+      where: { isActive: true }
+    })
+
+    recentUsers = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, name: true, email: true, role: true, balance: true, isBanned: true, createdAt: true }
+    })
+  } catch (err) {
+    console.error("[admin] DB error loading stats:", err);
+  }
 
   return (
     <div className="flex flex-col gap-10">
