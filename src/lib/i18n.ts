@@ -47,6 +47,7 @@ export const dictionaries = {
       settings: "Settings",
       admin: "Platform Admin",
       adminProviders: "Providers",
+      adminPayments: "Gateway Settings",
       signOut: "Sign out",
       stats: {
         balance: "Available Balance",
@@ -333,6 +334,7 @@ export const dictionaries = {
       settings: "设置",
       admin: "平台管理",
       adminProviders: "供应商管理",
+      adminPayments: "支付设置",
       signOut: "退出登录",
       stats: {
         balance: "可用余额",

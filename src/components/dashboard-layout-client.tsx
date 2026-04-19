@@ -32,6 +32,7 @@ export function DashboardLayoutClient({
   if (isAdmin) {
     navItems.push({ label: t.dashboard.admin, href: "/dashboard/admin" });
     navItems.push({ label: t.dashboard.adminProviders, href: "/dashboard/admin/providers" });
+    navItems.push({ label: t.dashboard.adminPayments, href: "/dashboard/admin/payments" });
   }
 
   return (
