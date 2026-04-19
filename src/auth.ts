@@ -30,7 +30,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user && user.role === "ADMIN" && user.password) {
           const isValid = await bcrypt.compare(credentials.password as string, user.password);
           if (isValid) {
-            return user;
+            return { id: user.id, name: user.name, email: user.email, image: user.image };
           }
         }
         return null;
@@ -41,6 +41,79 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: "jwt"
   },
   callbacks: {
+    /**
+     * signIn callback: auto-create or link the User row in DB
+     * when signing in via Google OAuth for the first time.
+     */
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.email) {
+        const prisma = getPrisma();
+        try {
+          // Check if user already exists
+          let dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
+
+          if (!dbUser) {
+            // First-time Google sign-in: create user
+            dbUser = await prisma.user.create({
+              data: {
+                email: user.email,
+                name: user.name ?? user.email.split("@")[0],
+                image: user.image ?? null,
+                emailVerified: new Date(),
+                balance: 0,
+              },
+            });
+          } else {
+            // Existing user: update profile if needed
+            if (user.image && user.image !== dbUser.image) {
+              await prisma.user.update({
+                where: { id: dbUser.id },
+                data: {
+                  image: user.image,
+                  name: user.name ?? dbUser.name,
+                },
+              });
+            }
+          }
+
+          // Store DB user id on the user object so jwt() can read it
+          user.id = dbUser.id;
+
+          // Also ensure the Account link exists (for NextAuth)
+          const existingAccount = await prisma.account.findUnique({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+              },
+            },
+          });
+          if (!existingAccount) {
+            await prisma.account.create({
+              data: {
+                userId: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+              },
+            });
+          }
+        } catch (err) {
+          console.error("[auth] signIn callback error:", err);
+          return false;
+        }
+      }
+      return true;
+    },
+
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
@@ -48,6 +121,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return token
     },
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string

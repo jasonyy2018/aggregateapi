@@ -59,9 +59,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Prisma engines required at runtime (copied in by standalone, but the schema is useful for migrations)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# Copy entrypoint and admin script
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/ensure-admin.js ./scripts/ensure-admin.js
+RUN chmod +x ./scripts/entrypoint.sh
+
+# Install runtime-only dependencies needed by entrypoint scripts
+RUN npm install --no-save pg bcryptjs prisma@6 2>/dev/null || true
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "server.js"]
+CMD ["sh", "./scripts/entrypoint.sh"]
