@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -13,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aggregateapi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   web:
     build:
@@ -23,12 +26,23 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Inject environment variables from host or override them here
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/aggregateapi?schema=public"
-      NEXTAUTH_URL: "http://localhost:3000"
-      NEXTAUTH_SECRET: "super-secret-key-for-nextauth-dev"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-super-secret-key-for-nextauth-dev}"
+      # Required for encrypting provider API keys at rest. CHANGE IN PRODUCTION.
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:-dev-only-encryption-key-change-me-in-production}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      NEXT_PUBLIC_PAYPAL_CLIENT_ID: "${NEXT_PUBLIC_PAYPAL_CLIENT_ID:-}"
+      PAYPAL_CLIENT_ID: "${PAYPAL_CLIENT_ID:-}"
+      PAYPAL_CLIENT_SECRET: "${PAYPAL_CLIENT_SECRET:-}"
+      ALIPAY_APP_ID: "${ALIPAY_APP_ID:-}"
+      ALIPAY_PRIVATE_KEY: "${ALIPAY_PRIVATE_KEY:-}"
+      ALIPAY_PUBLIC_KEY: "${ALIPAY_PUBLIC_KEY:-}"
+      ALIPAY_WEBHOOK_URL: "${ALIPAY_WEBHOOK_URL:-}"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:

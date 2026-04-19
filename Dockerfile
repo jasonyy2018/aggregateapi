@@ -1,58 +1,65 @@
-FROM node:18-alpine AS base
+# syntax=docker/dockerfile:1.7
 
-# Install dependencies only when needed
-FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+# ---------- Base ----------
+# Next.js 16 requires Node >= 20.9; 20-alpine is LTS and small.
+FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
+# Enable pnpm via corepack (shipped with Node 20+). No global install needed.
+RUN corepack enable
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+# ---------- Dependencies ----------
+FROM base AS deps
+COPY package.json pnpm-lock.yaml* .npmrc* ./
+# Use a persistent pnpm store cache to speed up rebuilds.
+# Falls back gracefully when no pnpm-lock.yaml is present (first run).
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    if [ -f pnpm-lock.yaml ]; then \
+      pnpm install --frozen-lockfile; \
+    else \
+      echo "WARNING: pnpm-lock.yaml not found, running unlocked install" && \
+      pnpm install --no-frozen-lockfile; \
+    fi
 
-# Rebuild the source code only when needed
+# ---------- Builder ----------
 FROM base AS builder
-WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Environment variables must be present at build time
-ENV NEXT_TELEMETRY_DISABLED 1
+# Generate Prisma Client (schema-aware)
+RUN pnpm exec prisma generate
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Build Next.js in standalone mode (see next.config.ts)
+RUN pnpm run build
 
-# Build Next.js
-RUN npm run build
-
-# Production image, copy all the files and run next
-FROM base AS runner
+# ---------- Runner (minimal prod image) ----------
+FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install openssl for Prisma
-RUN apk add --no-cache openssl
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy static assets
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy static assets and config
-COPY --from=builder /app/public ./public
+# Prepare .next dir for cache writes
+RUN mkdir .next && chown nextjs:nodejs .next
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Standalone output bundles exactly what's needed to run
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-USER nextjs
+# Prisma engines required at runtime (copied in by standalone, but the schema is useful for migrations)
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+USER nextjs
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 CMD ["node", "server.js"]

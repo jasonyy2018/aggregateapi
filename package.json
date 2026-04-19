@@ -2,15 +2,20 @@
   "name": "aggregateapi",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "seed:admin": "npx tsx scripts/create-admin.ts",
-    "seed:providers": "npx tsx scripts/seed-providers.ts"
+    "seed:admin": "tsx scripts/create-admin.ts",
+    "seed:providers": "tsx scripts/seed-providers.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
@@ -35,6 +40,7 @@
     "eslint-config-next": "16.2.3",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }
