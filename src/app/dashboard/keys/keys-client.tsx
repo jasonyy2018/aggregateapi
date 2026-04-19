@@ -114,7 +114,7 @@ export function KeysClient({ initialKeys }: { initialKeys: KeyType[] }) {
 
       {/* Success Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-100 flex items-center justify-center p-4">
           <div className="bg-bg-surface w-full max-w-lg rounded-2xl shadow-2xl border border-border-subtle p-8 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-4 mb-6">
               <div className="w-16 h-16 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center">
