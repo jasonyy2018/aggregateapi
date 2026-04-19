@@ -33,6 +33,8 @@ RUN pnpm run build
 # ---------- Runner (minimal prod image) ----------
 FROM node:20-alpine AS runner
 RUN apk add --no-cache openssl
+# Enable corepack to use pnpm in the runner stage
+RUN corepack enable
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -59,9 +61,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.sh ./scripts/e
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/ensure-admin.js ./scripts/ensure-admin.js
 RUN chmod +x ./scripts/entrypoint.sh
 
-# Install runtime-only dependencies needed by entrypoint scripts
-# This ensures we have the Prisma CLI and database drivers in the runner environment
-RUN npm install --no-save pg bcryptjs prisma@6
+# Use pnpm instead of npm to avoid "isDescendantOf" bugs and stay consistent with the project
+# We install these specifically in the runner for the entrypoint automation tasks
+RUN pnpm add pg bcryptjs prisma@6 --ignore-scripts
 
 USER nextjs
 EXPOSE 3000
