@@ -62,7 +62,8 @@ export default function PaypalCheckout({ amount, onSuccess }: { amount: number, 
               });
               
               if (!res.ok) {
-                throw new Error("Failed to create order");
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to create order");
               }
               const order = await res.json();
               return order.id;

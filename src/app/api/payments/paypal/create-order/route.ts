@@ -65,19 +65,32 @@ export async function POST(req: Request) {
 
     const data = await response.json();
 
-    // Ideally, create a PENDING transaction in our DB here
-    await prisma.billingTransaction.create({
-      data: {
-        userId: session.user.id!,
-        amount: parseFloat(amount),
-        type: 'TOPUP',
-        status: 'PENDING',
-        providerId: data.id,
-      }
-    });
+    if (!response.ok) {
+      console.error("[PayPal API Error]", data);
+      return NextResponse.json({ error: data.message || "PayPal rejected order creation" }, { status: response.status });
+    }
+
+    // Create a PENDING transaction in our DB
+    try {
+      await prisma.billingTransaction.create({
+        data: {
+          userId: session.user.id!,
+          amount: parseFloat(amount),
+          type: 'TOPUP',
+          status: 'PENDING',
+          providerId: data.id,
+        }
+      });
+    } catch (dbErr: any) {
+      console.error("[DB Error] Failed to create pending transaction:", dbErr);
+      // Even if DB fails, we might want to return the order, but it's safer to fail 
+      // so we don't lose track of the payment.
+      return NextResponse.json({ error: "Database error while preparing payment" }, { status: 500 });
+    }
 
     return NextResponse.json(data);
   } catch (err: any) {
+    console.error("[PayPal Route Error]", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
