@@ -63,7 +63,7 @@ RUN chmod +x ./scripts/entrypoint.sh
 
 # Use pnpm instead of npm to avoid "isDescendantOf" bugs and stay consistent with the project
 # We install these specifically in the runner for the entrypoint automation tasks
-RUN pnpm add pg bcryptjs prisma@6 --ignore-scripts
+RUN pnpm add pg bcryptjs prisma@7 --ignore-scripts
 
 USER nextjs
 EXPOSE 3000
