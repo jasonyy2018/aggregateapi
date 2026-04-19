@@ -10,7 +10,9 @@ WORKDIR /app
 
 # ---------- Dependencies ----------
 FROM base AS deps
+# The prisma schema is needed because `postinstall` runs `prisma generate`.
 COPY package.json pnpm-lock.yaml* .npmrc* ./
+COPY prisma ./prisma
 # Use a persistent pnpm store cache to speed up rebuilds.
 # Falls back gracefully when no pnpm-lock.yaml is present (first run).
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \

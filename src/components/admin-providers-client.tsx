@@ -13,7 +13,11 @@ import {
   toggleProviderModelEnabled,
   testProviderConnection,
   importProviderModels,
+  applyMarginToProvider,
+  applyMarginToModel,
+  updatePlatformSettings,
 } from "@/app/dashboard/admin/providers/actions";
+import { computeMargin, applyMargin } from "@/lib/pricing";
 
 // ----- Types mirroring server props -----
 
@@ -26,11 +30,19 @@ type ModelView = {
   displayName: string;
   description: string | null;
   contextLength: number | null;
+  costInputPer1k: number;
+  costOutputPer1k: number;
   inputPricePer1k: number;
   outputPricePer1k: number;
   isEnabled: boolean;
   sortOrder: number;
   capabilities: string[];
+};
+
+type PlatformSettingsView = {
+  defaultMarginPct: number;
+  minMarginPct: number;
+  autoApplyMargin: boolean;
 };
 
 type ProviderView = {
@@ -57,11 +69,19 @@ const PROTOCOL_DEFAULTS: Record<ProviderProtocol, string> = {
 
 // ---------- Main Component ----------
 
-export function AdminProvidersClient({ providers }: { providers: ProviderView[] }) {
+export function AdminProvidersClient({
+  providers,
+  settings,
+}: {
+  providers: ProviderView[];
+  settings: PlatformSettingsView;
+}) {
   const { t } = useLang();
   const [expandedId, setExpandedId] = useState<string | null>(providers[0]?.id ?? null);
   const [providerModal, setProviderModal] = useState<{ mode: "create" | "edit"; data?: ProviderView } | null>(null);
-  const [modelModal, setModelModal] = useState<{ providerId: string; data?: ModelView } | null>(null);
+  const [modelModal, setModelModal] = useState<
+    { providerId: string; data?: ModelView; defaults?: PlatformSettingsView } | null
+  >(null);
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
@@ -116,6 +136,28 @@ export function AdminProvidersClient({ providers }: { providers: ProviderView[] 
     });
   };
 
+  const onApplyMarginToProvider = (p: ProviderView) => {
+    const pct = prompt(
+      t.providers.promptBulkMargin.replace("{default}", String(Math.round(settings.defaultMarginPct * 100))),
+      String(Math.round(settings.defaultMarginPct * 100))
+    );
+    if (!pct) return;
+    const n = Number(pct);
+    if (!Number.isFinite(n) || n < 0) return flash("err", t.providers.invalidMargin);
+    startTransition(async () => {
+      const r = await applyMarginToProvider(p.id, n / 100);
+      if (r?.error) flash("err", r.error);
+      else flash("ok", r.message || t.providers.saved);
+    });
+  };
+
+  const onApplyMarginToModel = (m: ModelView) =>
+    startTransition(async () => {
+      const r = await applyMarginToModel(m.id);
+      if (r?.error) flash("err", r.error);
+      else flash("ok", t.providers.saved);
+    });
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -144,6 +186,12 @@ export function AdminProvidersClient({ providers }: { providers: ProviderView[] 
           {toast.msg}
         </div>
       )}
+
+      <PlatformSettingsCard
+        settings={settings}
+        onSaved={(msg) => flash("ok", msg)}
+        onError={(e) => flash("err", e)}
+      />
 
       {providers.length === 0 && (
         <div className="bg-bg-surface border border-border-subtle rounded-2xl p-12 text-center text-text-muted">
@@ -237,7 +285,14 @@ export function AdminProvidersClient({ providers }: { providers: ProviderView[] 
                     <h3 className="font-semibold text-text-main">
                       {t.providers.modelsTitle}
                     </h3>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => onApplyMarginToProvider(p)}
+                        disabled={isPending || p.models.length === 0}
+                        className="px-3 py-1.5 rounded-md bg-bg-surface-hover hover:bg-border-subtle text-sm font-medium text-text-muted transition-colors disabled:opacity-50"
+                      >
+                        {t.providers.applyMargin}
+                      </button>
                       <button
                         onClick={() => onImport(p)}
                         disabled={isPending || !p.hasApiKey}
@@ -246,7 +301,7 @@ export function AdminProvidersClient({ providers }: { providers: ProviderView[] 
                         {t.providers.importFromUpstream}
                       </button>
                       <button
-                        onClick={() => setModelModal({ providerId: p.id })}
+                        onClick={() => setModelModal({ providerId: p.id, defaults: settings })}
                         className="px-3 py-1.5 rounded-md bg-brand-primary text-brand-primary-text text-sm font-medium hover:opacity-90 transition-opacity"
                       >
                         + {t.providers.addModel}
@@ -260,57 +315,101 @@ export function AdminProvidersClient({ providers }: { providers: ProviderView[] 
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left border-collapse min-w-[720px]">
+                      <table className="w-full text-sm text-left border-collapse min-w-[860px]">
                         <thead>
                           <tr className="text-text-muted border-b border-border-subtle">
                             <th className="py-2 pr-3 font-medium w-12">{t.providers.colEnabled}</th>
                             <th className="py-2 pr-3 font-medium">{t.providers.colModelId}</th>
-                            <th className="py-2 pr-3 font-medium">{t.providers.colDisplayName}</th>
                             <th className="py-2 pr-3 font-medium">{t.providers.colContext}</th>
-                            <th className="py-2 pr-3 font-medium">{t.providers.colPricing}</th>
+                            <th className="py-2 pr-3 font-medium">{t.providers.colCost}</th>
+                            <th className="py-2 pr-3 font-medium">{t.providers.colSelling}</th>
+                            <th className="py-2 pr-3 font-medium">{t.providers.colMargin}</th>
                             <th className="py-2 pr-3 font-medium text-right">{t.providers.colActions}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {p.models.map((m) => (
-                            <tr key={m.id} className="border-b border-border-subtle last:border-0">
-                              <td className="py-2.5 pr-3">
-                                <ToggleSwitch
-                                  checked={m.isEnabled}
-                                  onChange={() => onToggleModel(m)}
-                                  disabled={isPending}
-                                  small
-                                />
-                              </td>
-                              <td className="py-2.5 pr-3">
-                                <code className="font-mono text-xs bg-bg-main px-2 py-1 rounded border border-border-subtle">
-                                  {m.modelId}
-                                </code>
-                              </td>
-                              <td className="py-2.5 pr-3 text-text-main">{m.displayName}</td>
-                              <td className="py-2.5 pr-3 text-text-muted">
-                                {m.contextLength ? `${m.contextLength.toLocaleString()} tok` : "—"}
-                              </td>
-                              <td className="py-2.5 pr-3 text-text-muted text-xs font-mono">
-                                ${m.inputPricePer1k.toFixed(4)}/${m.outputPricePer1k.toFixed(4)}
-                              </td>
-                              <td className="py-2.5 pr-3 text-right space-x-3">
-                                <button
-                                  onClick={() => setModelModal({ providerId: p.id, data: m })}
-                                  className="text-text-muted hover:text-brand-primary font-medium"
-                                >
-                                  {t.providers.edit}
-                                </button>
-                                <button
-                                  onClick={() => onDeleteModel(m)}
-                                  className="text-red-500 hover:text-red-400 font-medium"
-                                  disabled={isPending}
-                                >
-                                  {t.providers.delete}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                          {p.models.map((m) => {
+                            const margin = computeMargin(m);
+                            const belowMin = margin !== null && margin < settings.minMarginPct;
+                            return (
+                              <tr key={m.id} className="border-b border-border-subtle last:border-0">
+                                <td className="py-2.5 pr-3">
+                                  <ToggleSwitch
+                                    checked={m.isEnabled}
+                                    onChange={() => onToggleModel(m)}
+                                    disabled={isPending}
+                                    small
+                                  />
+                                </td>
+                                <td className="py-2.5 pr-3">
+                                  <div className="flex flex-col gap-0.5">
+                                    <code className="font-mono text-xs bg-bg-main px-2 py-1 rounded border border-border-subtle w-fit">
+                                      {m.modelId}
+                                    </code>
+                                    <span className="text-xs text-text-muted">{m.displayName}</span>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 pr-3 text-text-muted">
+                                  {m.contextLength ? `${m.contextLength.toLocaleString()} tok` : "—"}
+                                </td>
+                                <td className="py-2.5 pr-3 text-text-muted text-xs font-mono">
+                                  {m.costInputPer1k > 0 || m.costOutputPer1k > 0
+                                    ? `$${m.costInputPer1k.toFixed(4)}/$${m.costOutputPer1k.toFixed(4)}`
+                                    : "—"}
+                                </td>
+                                <td className="py-2.5 pr-3 text-text-main text-xs font-mono">
+                                  ${m.inputPricePer1k.toFixed(4)}/${m.outputPricePer1k.toFixed(4)}
+                                </td>
+                                <td className="py-2.5 pr-3">
+                                  {margin === null ? (
+                                    <span className="text-xs text-text-muted">—</span>
+                                  ) : (
+                                    <span
+                                      className={`text-xs font-semibold font-mono px-2 py-0.5 rounded ${
+                                        belowMin
+                                          ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                                          : margin >= settings.defaultMarginPct
+                                          ? "bg-green-500/10 text-green-700 dark:text-green-300"
+                                          : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"
+                                      }`}
+                                      title={
+                                        belowMin
+                                          ? `Below platform minimum ${(settings.minMarginPct * 100).toFixed(0)}%`
+                                          : ""
+                                      }
+                                    >
+                                      {(margin * 100).toFixed(0)}%
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 pr-3 text-right space-x-3">
+                                  {(m.costInputPer1k > 0 || m.costOutputPer1k > 0) && (
+                                    <button
+                                      onClick={() => onApplyMarginToModel(m)}
+                                      className="text-text-muted hover:text-brand-primary font-medium"
+                                      title={t.providers.applyDefaultMargin}
+                                      disabled={isPending}
+                                    >
+                                      {t.providers.reprice}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setModelModal({ providerId: p.id, data: m, defaults: settings })}
+                                    className="text-text-muted hover:text-brand-primary font-medium"
+                                  >
+                                    {t.providers.edit}
+                                  </button>
+                                  <button
+                                    onClick={() => onDeleteModel(m)}
+                                    className="text-red-500 hover:text-red-400 font-medium"
+                                    disabled={isPending}
+                                  >
+                                    {t.providers.delete}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -339,6 +438,7 @@ export function AdminProvidersClient({ providers }: { providers: ProviderView[] 
         <ModelModal
           providerId={modelModal.providerId}
           initial={modelModal.data}
+          defaults={modelModal.defaults ?? settings}
           onClose={() => setModelModal(null)}
           onSaved={(msg) => {
             flash("ok", msg);

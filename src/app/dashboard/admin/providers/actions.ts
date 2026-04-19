@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { encryptSecret, decryptSecret, makeKeyHint } from "@/lib/crypto";
+import { applyMargin, computeMargin, getPlatformSettings } from "@/lib/pricing";
 import type { ProviderProtocol } from "@prisma/client";
 
 // ----- Auth guard -----
@@ -46,12 +47,42 @@ export type ProviderModelInput = {
   displayName: string;
   description?: string;
   contextLength?: number;
+  costInputPer1k?: number;
+  costOutputPer1k?: number;
   inputPricePer1k?: number;
   outputPricePer1k?: number;
   isEnabled?: boolean;
   sortOrder?: number;
   capabilities?: string[];
+  /** If true, skip the minimum-margin check (dangerous; admin override). */
+  allowBelowMinMargin?: boolean;
 };
+
+/** Throws if the selling prices violate the platform-wide minMarginPct floor. */
+async function enforceMinMargin(
+  input: ProviderModelInput,
+  costInput: number,
+  costOutput: number
+) {
+  if (input.allowBelowMinMargin) return;
+  if (costInput <= 0 && costOutput <= 0) return; // no cost data => nothing to enforce
+  const prisma = getPrisma();
+  const settings = await getPlatformSettings(prisma);
+  const margin = computeMargin({
+    costInputPer1k: costInput,
+    costOutputPer1k: costOutput,
+    inputPricePer1k: input.inputPricePer1k ?? 0,
+    outputPricePer1k: input.outputPricePer1k ?? 0,
+  });
+  if (margin !== null && margin < settings.minMarginPct) {
+    const pct = (settings.minMarginPct * 100).toFixed(0);
+    const got = (margin * 100).toFixed(1);
+    throw new Error(
+      `Margin ${got}% is below the platform minimum of ${pct}%. ` +
+        `Either raise the selling price, lower the cost, or pass allowBelowMinMargin=true to override.`
+    );
+  }
+}
 
 // ----- Provider CRUD -----
 
@@ -156,6 +187,8 @@ export async function createProviderModel(input: ProviderModelInput) {
     if (!input.providerId || !input.modelId?.trim()) {
       throw new Error("providerId and modelId are required");
     }
+    await enforceMinMargin(input, input.costInputPer1k ?? 0, input.costOutputPer1k ?? 0);
+
     const m = await prisma.providerModel.create({
       data: {
         providerId: input.providerId,
@@ -163,6 +196,8 @@ export async function createProviderModel(input: ProviderModelInput) {
         displayName: input.displayName?.trim() || input.modelId.trim(),
         description: input.description?.trim() || null,
         contextLength: input.contextLength ?? null,
+        costInputPer1k: input.costInputPer1k ?? 0,
+        costOutputPer1k: input.costOutputPer1k ?? 0,
         inputPricePer1k: input.inputPricePer1k ?? 0,
         outputPricePer1k: input.outputPricePer1k ?? 0,
         isEnabled: input.isEnabled ?? true,
@@ -182,6 +217,8 @@ export async function updateProviderModel(input: ProviderModelInput) {
   try {
     if (!input.id) throw new Error("Model id is required");
     const prisma = await ensureAdmin();
+    await enforceMinMargin(input, input.costInputPer1k ?? 0, input.costOutputPer1k ?? 0);
+
     await prisma.providerModel.update({
       where: { id: input.id },
       data: {
@@ -189,6 +226,8 @@ export async function updateProviderModel(input: ProviderModelInput) {
         displayName: input.displayName?.trim(),
         description: input.description?.trim() || null,
         contextLength: input.contextLength ?? null,
+        costInputPer1k: input.costInputPer1k ?? 0,
+        costOutputPer1k: input.costOutputPer1k ?? 0,
         inputPricePer1k: input.inputPricePer1k ?? 0,
         outputPricePer1k: input.outputPricePer1k ?? 0,
         isEnabled: typeof input.isEnabled === "boolean" ? input.isEnabled : undefined,
@@ -198,6 +237,102 @@ export async function updateProviderModel(input: ProviderModelInput) {
     });
     revalidatePath("/dashboard/admin/providers");
     revalidatePath("/dashboard/models");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+// ----- Margin bulk operations -----
+
+export async function applyMarginToProvider(providerId: string, marginPct?: number) {
+  try {
+    const prisma = await ensureAdmin();
+    const settings = await getPlatformSettings(prisma);
+    const pct = typeof marginPct === "number" ? marginPct : settings.defaultMarginPct;
+    if (pct < settings.minMarginPct) {
+      throw new Error(
+        `Margin ${(pct * 100).toFixed(0)}% is below the enforced minimum of ${(
+          settings.minMarginPct * 100
+        ).toFixed(0)}%.`
+      );
+    }
+
+    const models = await prisma.providerModel.findMany({ where: { providerId } });
+    let updated = 0;
+    for (const m of models) {
+      if (m.costInputPer1k <= 0 && m.costOutputPer1k <= 0) continue;
+      const { inputPricePer1k, outputPricePer1k } = applyMargin(
+        m.costInputPer1k,
+        m.costOutputPer1k,
+        pct
+      );
+      await prisma.providerModel.update({
+        where: { id: m.id },
+        data: { inputPricePer1k, outputPricePer1k },
+      });
+      updated++;
+    }
+    revalidatePath("/dashboard/admin/providers");
+    revalidatePath("/dashboard/models");
+    return { success: true, message: `Applied ${(pct * 100).toFixed(0)}% margin to ${updated} models` };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function applyMarginToModel(modelId: string, marginPct?: number) {
+  try {
+    const prisma = await ensureAdmin();
+    const settings = await getPlatformSettings(prisma);
+    const pct = typeof marginPct === "number" ? marginPct : settings.defaultMarginPct;
+    if (pct < settings.minMarginPct) {
+      throw new Error(`Margin below platform minimum.`);
+    }
+    const m = await prisma.providerModel.findUnique({ where: { id: modelId } });
+    if (!m) throw new Error("Model not found");
+    if (m.costInputPer1k <= 0 && m.costOutputPer1k <= 0) {
+      throw new Error("Cannot auto-price: model has no cost configured");
+    }
+    const prices = applyMargin(m.costInputPer1k, m.costOutputPer1k, pct);
+    await prisma.providerModel.update({ where: { id: modelId }, data: prices });
+    revalidatePath("/dashboard/admin/providers");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+// ----- Platform settings -----
+
+export async function updatePlatformSettings(input: {
+  defaultMarginPct: number;
+  minMarginPct: number;
+  autoApplyMargin: boolean;
+}) {
+  try {
+    const prisma = await ensureAdmin();
+    if (input.minMarginPct < 0 || input.minMarginPct > 10) {
+      throw new Error("minMarginPct out of range (0..10)");
+    }
+    if (input.defaultMarginPct < input.minMarginPct) {
+      throw new Error("defaultMarginPct cannot be below minMarginPct");
+    }
+    await prisma.platformSetting.upsert({
+      where: { id: "singleton" },
+      create: {
+        id: "singleton",
+        defaultMarginPct: input.defaultMarginPct,
+        minMarginPct: input.minMarginPct,
+        autoApplyMargin: input.autoApplyMargin,
+      },
+      update: {
+        defaultMarginPct: input.defaultMarginPct,
+        minMarginPct: input.minMarginPct,
+        autoApplyMargin: input.autoApplyMargin,
+      },
+    });
+    revalidatePath("/dashboard/admin/providers");
     return { success: true };
   } catch (err: any) {
     return { error: err.message };
@@ -294,6 +429,14 @@ export async function testProviderConnection(providerId: string) {
 
 // ----- Auto-import models from upstream /models endpoint -----
 
+type UpstreamModel = {
+  id: string;
+  displayName?: string;
+  contextLength?: number;
+  costInputPer1k?: number;  // Upstream cost per 1k input tokens (USD)
+  costOutputPer1k?: number; // Upstream cost per 1k output tokens (USD)
+};
+
 export async function importProviderModels(providerId: string) {
   try {
     const prisma = await ensureAdmin();
@@ -301,10 +444,11 @@ export async function importProviderModels(providerId: string) {
     if (!p) throw new Error("Provider not found");
     if (!p.apiKeyCipher) throw new Error("Provider has no API key configured");
 
+    const settings = await getPlatformSettings(prisma);
     const apiKey = decryptSecret(p.apiKeyCipher);
     const base = p.baseUrl.replace(/\/+$/, "");
 
-    let upstreamModels: { id: string; displayName?: string; contextLength?: number }[] = [];
+    let upstreamModels: UpstreamModel[] = [];
 
     if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
@@ -315,11 +459,18 @@ export async function importProviderModels(providerId: string) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
       const data = await res.json();
-      upstreamModels = (data.data || []).map((m: any) => ({
-        id: m.id,
-        displayName: m.id,
-        contextLength: m.context_length ?? m.context_window ?? undefined,
-      }));
+      upstreamModels = (data.data || []).map((m: any) => {
+        // OpenRouter exposes pricing: { prompt: "0.0000015", completion: "0.000002" } (per token, string!)
+        const promptPerToken = m.pricing?.prompt ? Number(m.pricing.prompt) : undefined;
+        const completionPerToken = m.pricing?.completion ? Number(m.pricing.completion) : undefined;
+        return {
+          id: m.id,
+          displayName: m.name || m.id,
+          contextLength: m.context_length ?? m.context_window ?? undefined,
+          costInputPer1k: promptPerToken != null ? promptPerToken * 1000 : undefined,
+          costOutputPer1k: completionPerToken != null ? completionPerToken * 1000 : undefined,
+        };
+      });
     } else if (p.protocol === "ANTHROPIC") {
       const res = await fetch(`${base}/models`, {
         headers: {
@@ -353,6 +504,13 @@ export async function importProviderModels(providerId: string) {
     let skipped = 0;
     for (const m of upstreamModels) {
       if (!m.id) continue;
+      const costIn = m.costInputPer1k ?? 0;
+      const costOut = m.costOutputPer1k ?? 0;
+      // Auto-apply default margin if we know the cost
+      const prices =
+        settings.autoApplyMargin && (costIn > 0 || costOut > 0)
+          ? applyMargin(costIn, costOut, settings.defaultMarginPct)
+          : { inputPricePer1k: 0, outputPricePer1k: 0 };
       try {
         await prisma.providerModel.create({
           data: {
@@ -360,6 +518,10 @@ export async function importProviderModels(providerId: string) {
             modelId: m.id,
             displayName: m.displayName || m.id,
             contextLength: m.contextLength ?? null,
+            costInputPer1k: costIn,
+            costOutputPer1k: costOut,
+            inputPricePer1k: prices.inputPricePer1k,
+            outputPricePer1k: prices.outputPricePer1k,
             isEnabled: false, // import as disabled by default - admin must explicitly enable
           },
         });
@@ -370,7 +532,10 @@ export async function importProviderModels(providerId: string) {
     }
 
     revalidatePath("/dashboard/admin/providers");
-    return { success: true, message: `Imported ${added}, skipped ${skipped} (already exist)` };
+    return {
+      success: true,
+      message: `Imported ${added}, skipped ${skipped} (already exist). Auto-applied ${(settings.defaultMarginPct * 100).toFixed(0)}% margin where cost was known.`,
+    };
   } catch (err: any) {
     return { error: err.message };
   }

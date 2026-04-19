@@ -86,10 +86,16 @@ model UsageLog {
   model          String
   provider       String   // e.g., openrouter, together
   tokens         Int
-  cost           Float
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  cost           Float    // What user was charged (selling price)
+  upstreamCost   Float    @default(0) // What platform paid to upstream provider
   createdAt      DateTime @default(now())
 
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 // --- LLM Provider Management ---
@@ -121,6 +127,12 @@ enum ProviderProtocol {
 
 // A specific model exposed by a Provider. Only models with isEnabled=true
 // on both the Provider and the ProviderModel will be visible to end-users.
+//
+// Pricing model (per 1k tokens, USD):
+//   costInput/costOutput    -> what the platform pays to the upstream provider
+//   inputPricePer1k/output  -> what end-users are charged (selling price)
+// Platform margin = (selling - cost) / cost, enforced >= PlatformSetting.defaultMarginPct
+// unless the admin explicitly overrides on save.
 model ProviderModel {
   id                String   @id @default(cuid())
   providerId        String
@@ -128,6 +140,8 @@ model ProviderModel {
   displayName       String   // Friendly name shown in UI
   description       String?
   contextLength     Int?     // Max context window tokens
+  costInputPer1k    Float    @default(0)   // Upstream cost (USD per 1k input tokens)
+  costOutputPer1k   Float    @default(0)   // Upstream cost (USD per 1k output tokens)
   inputPricePer1k   Float    @default(0)   // Platform selling price (USD per 1k input tokens)
   outputPricePer1k  Float    @default(0)   // Platform selling price (USD per 1k output tokens)
   isEnabled         Boolean  @default(true)
@@ -140,6 +154,16 @@ model ProviderModel {
 
   @@unique([providerId, modelId])
   @@index([isEnabled])
+}
+
+// Singleton platform-wide settings. Only one row exists (id = "singleton").
+model PlatformSetting {
+  id                 String   @id @default("singleton")
+  defaultMarginPct   Float    @default(0.20) // 20% minimum margin enforced on pricing
+  minMarginPct       Float    @default(0.20) // Hard floor; admin cannot save a model below this
+  autoApplyMargin    Boolean  @default(true) // If true, importing a model auto-sets selling = cost * (1 + defaultMargin)
+  updatedAt          DateTime @updatedAt
+  updatedBy          String?
 }
 
 model BillingTransaction {
