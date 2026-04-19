@@ -4,8 +4,12 @@ import { useLang } from "@/lib/lang-context";
 
 export function DashboardOverviewClient({
   userName,
+  stats,
+  recentUsage,
 }: {
   userName?: string | null;
+  stats: { balance: number; requests: number; latency: number };
+  recentUsage: any[];
 }) {
   const { t } = useLang();
 
@@ -27,7 +31,7 @@ export function DashboardOverviewClient({
           <span className="text-sm text-text-muted font-medium">
             {t.dashboard.stats.balance}
           </span>
-          <span className="text-4xl font-bold">$24.50</span>
+          <span className="text-4xl font-bold">${stats.balance.toFixed(2)}</span>
           <span className="text-xs text-brand-secondary cursor-pointer hover:underline">
             {t.dashboard.stats.topUp}
           </span>
@@ -37,7 +41,7 @@ export function DashboardOverviewClient({
           <span className="text-sm text-text-muted font-medium">
             {t.dashboard.stats.requests}
           </span>
-          <span className="text-4xl font-bold">45,231</span>
+          <span className="text-4xl font-bold">{stats.requests.toLocaleString()}</span>
           <span className="text-xs text-text-muted">
             {t.dashboard.stats.requestsSub}
           </span>
@@ -48,7 +52,7 @@ export function DashboardOverviewClient({
             {t.dashboard.stats.latency}
           </span>
           <span className="text-4xl font-bold text-brand-secondary">
-            420ms
+            {stats.latency > 0 ? `${stats.latency}ms` : '-'}
           </span>
           <span className="text-xs text-text-muted">
             {t.dashboard.stats.latencySub}
@@ -79,38 +83,13 @@ export function DashboardOverviewClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {[
-                {
-                  time: "2 mins ago",
-                  model: "openai/gpt-4o",
-                  tokens: "1,240",
-                  cost: "-$0.0024",
-                },
-                {
-                  time: "15 mins ago",
-                  model: "meta-llama/Llama-3-8b",
-                  tokens: "521",
-                  cost: "-$0.0002",
-                },
-                {
-                  time: "1 hour ago",
-                  model: "openai/gpt-4o",
-                  tokens: "2,100",
-                  cost: "-$0.0042",
-                },
-                {
-                  time: "3 hours ago",
-                  model: "anthropic/claude-3.5-sonnet",
-                  tokens: "3,500",
-                  cost: "-$0.0105",
-                },
-                {
-                  time: "5 hours ago",
-                  model: "mistralai/Mixtral-8x7B",
-                  tokens: "890",
-                  cost: "-$0.0004",
-                },
-              ].map((row, i) => (
+              {recentUsage.length === 0 ? (
+                <tr>
+                   <td colSpan={4} className="py-8 text-center text-text-muted italic">
+                      No usage records yet.
+                   </td>
+                </tr>
+              ) : recentUsage.map((row, i) => (
                 <tr
                   key={i}
                   className="hover:bg-bg-surface-hover transition-colors"
@@ -124,7 +103,7 @@ export function DashboardOverviewClient({
                     </span>
                   </td>
                   <td className="py-4 text-sm">{row.tokens}</td>
-                  <td className="py-4 text-sm text-brand-secondary text-right font-mono">
+                  <td className={`py-4 text-sm text-right font-mono ${row.cost.startsWith('+') ? 'text-green-500' : 'text-brand-secondary'}`}>
                     {row.cost}
                   </td>
                 </tr>
