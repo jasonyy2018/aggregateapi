@@ -49,8 +49,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
      */
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
-        const prisma = getPrisma();
         try {
+          const prisma = getPrisma();
           // Check if user already exists
           let dbUser = await prisma.user.findUnique({
             where: { email: user.email },
@@ -84,33 +84,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user.id = dbUser.id;
 
           // Also ensure the Account link exists (for NextAuth)
-          const existingAccount = await prisma.account.findUnique({
-            where: {
-              provider_providerAccountId: {
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-              },
-            },
-          });
-          if (!existingAccount) {
-            await prisma.account.create({
-              data: {
-                userId: dbUser.id,
-                type: account.type,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-                access_token: account.access_token,
-                refresh_token: account.refresh_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
+          try {
+            const existingAccount = await prisma.account.findUnique({
+              where: {
+                provider_providerAccountId: {
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                },
               },
             });
+            if (!existingAccount) {
+              await prisma.account.create({
+                data: {
+                  userId: dbUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  access_token: account.access_token,
+                  refresh_token: account.refresh_token,
+                  expires_at: account.expires_at,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                },
+              });
+            }
+          } catch (accountErr) {
+            // Account link failed (maybe unique constraint) — non-fatal
+            console.warn("[auth] Account link skipped:", accountErr);
           }
         } catch (err) {
-          console.error("[auth] signIn callback error:", err);
-          return false;
+          // DB error — log but STILL allow sign-in
+          console.error("[auth] signIn DB error (non-fatal):", err);
         }
       }
       return true;
