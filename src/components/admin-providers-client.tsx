@@ -971,8 +971,5 @@ function ModalActions({
   );
 }
 
-  );
-}
-
 const inputClass =
   "w-full px-3 py-2 border border-border-subtle bg-bg-main text-text-main rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all";
