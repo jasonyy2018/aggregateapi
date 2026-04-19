@@ -32,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user && user.role === "ADMIN" && user.password) {
           const isValid = await bcrypt.compare(credentials.password as string, user.password);
           if (isValid) {
-            return { id: user.id, name: user.name, email: user.email, image: user.image };
+            return { id: user.id, name: user.name, email: user.email, image: user.image, role: user.role };
           }
         }
         return null;
@@ -51,12 +51,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account?.provider === "google") {
         try {
           const prisma = getPrisma();
-          const dbUser = await prisma.user.findUnique({
+          let dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
           });
 
           if (!dbUser) {
-            await prisma.user.create({
+            dbUser = await prisma.user.create({
               data: {
                 email: user.email!,
                 name: user.name || "",
@@ -65,6 +65,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 balance: 0,
               },
             });
+          }
+
           // Store DB user id on the user object so jwt() can read it
           user.id = dbUser.id;
 
@@ -82,7 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               await prisma.account.create({
                 data: {
                   userId: dbUser.id,
-                  type: account.type,
+                  type: account.type as string,
                   provider: account.provider,
                   providerAccountId: account.providerAccountId,
                   access_token: account.access_token,
@@ -95,11 +97,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               });
             }
           } catch (accountErr) {
-            // Account link failed (maybe unique constraint) — non-fatal
             console.warn("[auth] Account link skipped:", accountErr);
           }
         } catch (err) {
-          // DB error — log but STILL allow sign-in
           console.error("[auth] signIn DB error (non-fatal):", err);
         }
       }
@@ -110,7 +110,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id
         token.picture = user.image
-        token.role = (user as any).role
+        token.role = (user as any).role || "USER"
       }
       return token
     },
