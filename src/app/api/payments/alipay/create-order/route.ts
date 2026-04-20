@@ -23,20 +23,28 @@ export async function POST(req: Request) {
     const config = await getAlipayConfig();
 
     if (!config.appId || !config.privateKey) {
-      return NextResponse.json({ error: "Alipay is not fully configured. Please check your admin settings." }, { status: 500 });
+      console.error("[ALIPAY] Configuration missing:", { 
+        hasAppId: !!config.appId, 
+        hasPrivateKey: !!config.privateKey,
+        hasPublicKey: !!config.alipayPublicKey 
+      });
+      return NextResponse.json({ error: "Alipay is not fully configured. Please check your admin settings (App ID and Private Key are required)." }, { status: 500 });
     }
+
+    console.log("[ALIPAY] Initializing SDK with AppID:", config.appId);
 
     const alipaySdk = new AlipaySdk({
       appId: config.appId,
       privateKey: config.privateKey,
       alipayPublicKey: config.alipayPublicKey || undefined,
       gateway: 'https://openapi.alipay.com/gateway.do',
-      timeout: 5000,
+      timeout: 10000,
       camelcase: true
     });
 
     // Create tracking order id
     const outTradeNo = `ORDER_${Date.now()}_${session.user.id?.substring(0, 5)}`;
+    console.log("[ALIPAY] Creating order:", outTradeNo, "Amount:", amount);
 
     // Optional: create a PENDING transaction locally
     await prisma.billingTransaction.create({
@@ -69,6 +77,8 @@ export async function POST(req: Request) {
       body: 'API Gateway Account Balance Top-up',
     });
 
+    console.log("[ALIPAY] Executing alipay.trade.page.pay...");
+
     // Executes and retrieves a URL back since we specify 'get'
     const resultUrl = await alipaySdk.exec(
       'alipay.trade.page.pay',
@@ -76,10 +86,18 @@ export async function POST(req: Request) {
       { formData }
     );
 
+    if (!resultUrl) {
+      throw new Error("Alipay SDK returned an empty URL. Please verify your App ID and Private Key.");
+    }
+
+    console.log("[ALIPAY] Order created successfully, returning URL.");
     return NextResponse.json({ url: resultUrl as unknown as string });
   } catch (err: any) {
     console.error("Alipay Create Order Error:", err);
-    return NextResponse.json({ error: err.message || "Internal Server Error during Alipay order creation" }, { status: 500 });
+    // If Alipay returns a specific error code in the message, it's very helpful
+    const errorMessage = err.message || "Internal Server Error during Alipay order creation";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
 

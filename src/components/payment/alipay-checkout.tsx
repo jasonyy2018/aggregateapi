@@ -19,10 +19,12 @@ export default function AlipayCheckout({ amount }: { amount: number }) {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to initialize Alipay");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to initialize Alipay");
       }
       
       const { url } = await res.json();
+
       
       if (url) {
         // Redirect completely to Alipay gateway
