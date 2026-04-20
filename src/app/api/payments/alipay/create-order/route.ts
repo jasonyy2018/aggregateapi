@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { auth } from '@/auth';
-import { AlipaySdk, AlipayFormData } from 'alipay-sdk';
+import { AlipaySdk } from 'alipay-sdk';
 import { getAlipayConfig } from '@/lib/payment-config';
 
 export const dynamic = 'force-dynamic';
@@ -57,41 +57,37 @@ export async function POST(req: Request) {
       }
     });
 
-    // Create a page.pay URL
-    const formData = new AlipayFormData();
-    
+
     // Dynamically determine URLs based on request origin
     const origin = req.headers.get('origin') || new URL(req.url).origin;
     const notifyUrl = `${origin}/api/payments/alipay/notify`;
     const returnUrl = `${origin}/dashboard/billing`;
 
-    formData.setMethod('get');
-    formData.addField('notifyUrl', notifyUrl);
-    formData.addField('returnUrl', returnUrl);
-    
-    formData.addField('bizContent', {
-      outTradeNo: outTradeNo,
-      productCode: 'FAST_INSTANT_TRADE_PAY',
-      totalAmount: amount.toString(),
-      subject: 'AggregatAPI Top-up',
-      body: 'API Gateway Account Balance Top-up',
-    });
+    console.log("[ALIPAY] Executing alipay.trade.page.pay using pageExec...");
 
-    console.log("[ALIPAY] Executing alipay.trade.page.pay...");
-
-    // Executes and retrieves a URL back since we specify 'get'
-    const resultUrl = await alipaySdk.exec(
+    // In Alipay SDK v4, pageExec is the recommended way for page payments
+    const resultUrl = await alipaySdk.pageExec(
       'alipay.trade.page.pay',
-      {},
-      { formData }
+      {
+        bizContent: {
+          outTradeNo: outTradeNo,
+          productCode: 'FAST_INSTANT_TRADE_PAY',
+          totalAmount: amount.toString(),
+          subject: 'AggregatAPI Top-up',
+          body: 'API Gateway Account Balance Top-up',
+        },
+        notifyUrl: notifyUrl,
+        returnUrl: returnUrl,
+      }
     );
 
     if (!resultUrl) {
-      throw new Error("Alipay SDK returned an empty URL. Please verify your App ID and Private Key.");
+      throw new Error("Alipay SDK failed to generate a payment URL.");
     }
 
-    console.log("[ALIPAY] Order created successfully, returning URL.");
-    return NextResponse.json({ url: resultUrl as unknown as string });
+    console.log("[ALIPAY] Order created successfully via pageExec.");
+    return NextResponse.json({ url: resultUrl });
+
   } catch (err: any) {
     console.error("Alipay Create Order Error:", err);
     // If Alipay returns a specific error code in the message, it's very helpful
