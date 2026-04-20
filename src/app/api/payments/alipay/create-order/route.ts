@@ -2,20 +2,13 @@ import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { AlipaySdk, AlipayFormData } from 'alipay-sdk';
-// Wait, ALipaySDK v3 handles it directly or with AlipayFormData
+import { getAlipayConfig } from '@/lib/payment-config';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   const prisma = getPrisma();
-  const alipaySdk = new AlipaySdk({
-    appId: process.env.ALIPAY_APP_ID || '',
-    privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
-    alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
-    gateway: 'https://openapi.alipay.com/gateway.do',
-    timeout: 5000,
-    camelcase: true
-  });
+  
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -23,10 +16,24 @@ export async function POST(req: Request) {
     }
 
     const { amount } = await req.json();
-
-    if (!process.env.ALIPAY_APP_ID || !process.env.ALIPAY_PRIVATE_KEY) {
-      return NextResponse.json({ error: "Alipay Gateway is not configured." }, { status: 500 });
+    if (!amount) {
+      return NextResponse.json({ error: "Amount is required" }, { status: 400 });
     }
+
+    const config = await getAlipayConfig();
+
+    if (!config.appId || !config.privateKey) {
+      return NextResponse.json({ error: "Alipay is not fully configured. Please check your admin settings." }, { status: 500 });
+    }
+
+    const alipaySdk = new AlipaySdk({
+      appId: config.appId,
+      privateKey: config.privateKey,
+      alipayPublicKey: config.alipayPublicKey || undefined,
+      gateway: 'https://openapi.alipay.com/gateway.do',
+      timeout: 5000,
+      camelcase: true
+    });
 
     // Create tracking order id
     const outTradeNo = `ORDER_${Date.now()}_${session.user.id?.substring(0, 5)}`;
@@ -45,9 +52,14 @@ export async function POST(req: Request) {
     // Create a page.pay URL
     const formData = new AlipayFormData();
     
+    // Dynamically determine URLs based on request origin
+    const origin = req.headers.get('origin') || new URL(req.url).origin;
+    const notifyUrl = `${origin}/api/payments/alipay/notify`;
+    const returnUrl = `${origin}/dashboard/billing`;
+
     formData.setMethod('get');
-    formData.addField('notifyUrl', process.env.ALIPAY_WEBHOOK_URL || 'http://localhost:3000/api/payments/alipay/notify');
-    formData.addField('returnUrl', 'http://localhost:3000/dashboard/billing');
+    formData.addField('notifyUrl', notifyUrl);
+    formData.addField('returnUrl', returnUrl);
     
     formData.addField('bizContent', {
       outTradeNo: outTradeNo,
@@ -67,6 +79,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: resultUrl as unknown as string });
   } catch (err: any) {
     console.error("Alipay Create Order Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Internal Server Error during Alipay order creation" }, { status: 500 });
   }
 }
+

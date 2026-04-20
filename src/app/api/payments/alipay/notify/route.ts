@@ -1,21 +1,29 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { AlipaySdk } from 'alipay-sdk';
+import { getAlipayConfig } from '@/lib/payment-config';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   const prisma = getPrisma();
-  const alipaySdk = new AlipaySdk({
-    appId: process.env.ALIPAY_APP_ID || '',
-    privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
-    alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
-    gateway: 'https://openapi.alipay.com/gateway.do',
-    timeout: 5000,
-    camelcase: true
-  });
-
+  
   try {
+    const config = await getAlipayConfig();
+    if (!config.appId || !config.privateKey) {
+      console.error("[ALIPAY NOTIFY] Alipay is not configured. Cannot verify signature.");
+      return new NextResponse('fail', { status: 500 });
+    }
+
+    const alipaySdk = new AlipaySdk({
+      appId: config.appId,
+      privateKey: config.privateKey,
+      alipayPublicKey: config.alipayPublicKey || undefined,
+      gateway: 'https://openapi.alipay.com/gateway.do',
+      timeout: 5000,
+      camelcase: true
+    });
+
     // Alipay sends form-urlencoded data to the notify URL
     const textData = await req.text();
     const searchParams = new URLSearchParams(textData);
@@ -71,3 +79,4 @@ export async function POST(req: Request) {
     return new NextResponse('fail', { status: 500 });
   }
 }
+
