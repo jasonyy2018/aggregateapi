@@ -27,11 +27,26 @@ export default function AlipayCheckout({ amount }: { amount: number }) {
 
       
       if (url) {
-        // Redirect completely to Alipay gateway
-        window.location.href = url;
+        if (url.startsWith("<form") || url.includes("<script")) {
+          // If the SDK returns a form/script string, we need to inject and submit it
+          const div = document.createElement("div");
+          div.innerHTML = url;
+          document.body.appendChild(div);
+          const form = div.querySelector("form");
+          if (form) {
+            form.submit();
+          } else {
+            // Fallback: search globally if not found in div
+            document.forms[0]?.submit();
+          }
+        } else {
+          // Redirect completely if it's a URL
+          window.location.href = url;
+        }
       } else {
         throw new Error("Alipay Gateway URL is missing");
       }
+
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to connect to Alipay Gateway. Make sure ALIPAY_ keys are correctly set.");

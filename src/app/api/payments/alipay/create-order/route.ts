@@ -66,9 +66,11 @@ export async function POST(req: Request) {
     console.log("[ALIPAY] Executing alipay.trade.page.pay using pageExec...");
 
     // In Alipay SDK v4, pageExec is the recommended way for page payments
+    // Adding method: 'GET' ensures we get a URL instead of an HTML form string
     const resultUrl = await alipaySdk.pageExec(
       'alipay.trade.page.pay',
       {
+        method: 'GET',
         bizContent: {
           outTradeNo: outTradeNo,
           productCode: 'FAST_INSTANT_TRADE_PAY',
@@ -80,6 +82,7 @@ export async function POST(req: Request) {
         returnUrl: returnUrl,
       }
     );
+
 
     if (!resultUrl) {
       throw new Error("Alipay SDK failed to generate a payment URL.");
