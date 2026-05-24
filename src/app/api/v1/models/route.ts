@@ -37,6 +37,12 @@ export async function GET(req: Request) {
 
   for (const p of providers) {
     for (const m of p.models) {
+      // Exclude non-LLM models (image, video, music) from the standard models listing
+      const isNonLlm = m.capabilities.some((c) => ["image", "video", "music"].includes(c));
+      if (isNonLlm) {
+        continue;
+      }
+
       // 1. Add raw clean modelId (e.g. "gpt-4o", "deepseek-chat") for standard client dropdown matches
       if (!seenRawIds.has(m.modelId)) {
         seenRawIds.add(m.modelId);

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLang } from "@/lib/lang-context";
 
 export function DashboardOverviewClient({
@@ -32,9 +33,12 @@ export function DashboardOverviewClient({
             {t.dashboard.stats.balance}
           </span>
           <span className="text-4xl font-bold">${stats.balance.toFixed(2)}</span>
-          <span className="text-xs text-brand-secondary cursor-pointer hover:underline">
+          <Link
+            href="/dashboard/billing"
+            className="text-xs text-brand-secondary cursor-pointer hover:underline"
+          >
             {t.dashboard.stats.topUp}
-          </span>
+          </Link>
         </div>
 
         <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 flex flex-col gap-2 hover:border-brand-primary/50 transition-colors shadow-sm">

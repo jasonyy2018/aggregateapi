@@ -24,6 +24,7 @@ export function DashboardLayoutClient({
   const navItems: { label: string; href: string }[] = [
     { label: t.dashboard.overview, href: "/dashboard" },
     { label: (t.dashboard as any).playground || "Playground", href: "/dashboard/playground" },
+    { label: (t.dashboard as any).docs || "API Docs", href: "/dashboard/docs" },
     { label: t.dashboard.models, href: "/dashboard/models" },
     { label: t.dashboard.apiKeys, href: "/dashboard/keys" },
     { label: t.dashboard.billing, href: "/dashboard/billing" },
