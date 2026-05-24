@@ -64,7 +64,12 @@ RUN chmod +x ./scripts/entrypoint.sh
 
 # Use pnpm instead of npm to avoid "isDescendantOf" bugs and stay consistent with the project
 # We install these specifically in the runner for the entrypoint automation tasks
-RUN pnpm add pg bcryptjs prisma@7 --ignore-scripts
+RUN pnpm add pg bcryptjs prisma@7 @prisma/client@7 @prisma/adapter-pg@7 --ignore-scripts
+
+# Regenerate Prisma Client in the standalone output so the versioned engine
+# package (e.g. @prisma/client-<hash>) is present at runtime.
+# Next.js standalone tracing does not pick up this generated package.
+RUN npx prisma generate
 
 USER nextjs
 EXPOSE 3000
