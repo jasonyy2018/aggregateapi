@@ -538,8 +538,56 @@ export async function importProviderModels(providerId: string) {
     const isKie = p.slug.toLowerCase() === "kie" || base.includes("kie.ai");
 
     if (isKie) {
-      // Pre-configured model list for Kie.ai
-      upstreamModels = [
+      try {
+        // Try fetching live models from Kie.ai's dynamic /models endpoint first
+        const res = await fetch(`${base}/models`, {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            ...(p.extraHeaders as Record<string, string> | null ?? {}),
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.data) && data.data.length > 0) {
+            upstreamModels = data.data.map((m: any) => {
+              // Parse pricing structures
+              const promptPrice = m.pricing?.prompt !== undefined ? Number(m.pricing.prompt) : 0;
+              const completionPrice = m.pricing?.completion !== undefined ? Number(m.pricing.completion) : 0;
+
+              // Extract or infer capabilities for capability-based filtering
+              const caps: string[] = [];
+              if (m.capabilities && Array.isArray(m.capabilities)) {
+                caps.push(...m.capabilities);
+              } else {
+                const idLower = m.id.toLowerCase();
+                if (idLower.includes("flux") || idLower.includes("mj") || idLower.includes("midjourney") || idLower.includes("imagen") || idLower.includes("banana")) {
+                  caps.push("image");
+                } else if (idLower.includes("kling") || idLower.includes("runway") || idLower.includes("veo") || idLower.includes("seedance") || idLower.includes("video")) {
+                  caps.push("video");
+                } else if (idLower.includes("suno") || idLower.includes("music")) {
+                  caps.push("music");
+                }
+              }
+
+              return {
+                id: m.id,
+                displayName: m.display_name || m.id,
+                contextLength: m.context_length || null,
+                costInputPer1k: promptPrice,
+                costOutputPer1k: completionPrice,
+                capabilities: caps,
+              };
+            });
+            console.log(`Successfully fetched ${upstreamModels.length} models dynamically from Kie.ai API.`);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch models dynamically from Kie.ai, falling back to static list:", err);
+      }
+
+      if (upstreamModels.length === 0) {
+        // Pre-configured model list for Kie.ai
+        upstreamModels = [
         // OpenAI
         { id: "gpt-4o", displayName: "GPT-4o (Kie)", contextLength: 128000, costInputPer1k: 0.0025, costOutputPer1k: 0.010 },
         { id: "gpt-4o-mini", displayName: "GPT-4o-mini (Kie)", contextLength: 128000, costInputPer1k: 0.00015, costOutputPer1k: 0.0006 },
@@ -643,7 +691,8 @@ export async function importProviderModels(providerId: string) {
         { id: "gemini-omni-video-6s-720p-no-video-input", displayName: "Gemini Omni Video 6s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
         { id: "gemini-omni-video-4s-720p-no-video-input", displayName: "Gemini Omni Video 4s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
       ];
-    } else if (p.protocol === "OPENAI") {
+    }
+  } else if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
