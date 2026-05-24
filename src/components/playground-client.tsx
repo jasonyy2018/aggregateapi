@@ -281,7 +281,7 @@ export function PlaygroundClient({
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || err.details || "Generation failed");
+        throw new Error(err.error?.message || err.details || "Generation failed");
       }
 
       const data = await res.json();

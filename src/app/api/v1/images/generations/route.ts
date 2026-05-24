@@ -76,8 +76,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("Image Gateway error:", err);
-    return openaiError("Internal Server Error: " + err.message, "internal_server_error", 500);
+    console.error("Image Gateway error:", err.message);
+    return openaiError(err.message, "upstream_error", 502);
   }
 }
 

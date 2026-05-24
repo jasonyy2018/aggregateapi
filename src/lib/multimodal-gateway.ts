@@ -51,69 +51,72 @@ export async function generateImage(args: {
   const isKie = provider.slug.toLowerCase() === "kie" || base.includes("kie.ai");
 
   if (isKie) {
-    // Kie.ai has custom asynchronous image generation endpoints, e.g. for Flux/Midjourney
-    // Let's use the unified createTask API for Kie.ai to generate images!
-    const cleanBase = base.replace(/\/v1$/, ""); // Ensure root API
-    const size = body.size || "1024x1024";
-    const [width, height] = size.split("x").map(Number);
-
     // Map clean/standard model ID to exact Kie.ai supported parameter
-    let cleanModelId = upstreamModelId;
-    if (cleanModelId === "flux-dev") cleanModelId = "flux-kontext-dev";
-    else if (cleanModelId === "flux-pro") cleanModelId = "flux-kontext-pro";
-    else if (cleanModelId === "midjourney") cleanModelId = "mj_txt2img";
+    let kieModelId = upstreamModelId;
+    if (kieModelId === "flux-dev") kieModelId = "flux-kontext-dev";
+    else if (kieModelId === "flux-pro") kieModelId = "flux-kontext-pro";
+    else if (kieModelId === "midjourney") kieModelId = "mj_txt2img";
 
-    const payload = {
-      model: cleanModelId,
-      input: {
-        prompt: body.prompt,
-        width: isNaN(width) ? 1024 : width,
-        height: isNaN(height) ? 1024 : height,
-      },
-    };
+    // Only use async createTask for known async image models
+    const asyncImageModels = new Set(["flux-schnell", "flux-kontext-dev", "flux-kontext-pro", "mj_txt2img"]);
+    if (asyncImageModels.has(kieModelId)) {
+      const cleanBase = base.replace(/\/v1$/, "");
+      const size = body.size || "1024x1024";
+      const [width, height] = size.split("x").map(Number);
 
-    const res = await fetch(`${cleanBase}/api/v1/jobs/createTask`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        ...(provider.extraHeaders as Record<string, string> | null ?? {}),
-      },
-      body: JSON.stringify(payload),
-    });
+      const payload = {
+        model: kieModelId,
+        input: {
+          prompt: body.prompt,
+          width: isNaN(width) ? 1024 : width,
+          height: isNaN(height) ? 1024 : height,
+        },
+      };
 
-    const data = await res.json();
+      const res = await fetch(`${cleanBase}/api/v1/jobs/createTask`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          ...(provider.extraHeaders as Record<string, string> | null ?? {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (data?.code && data.code !== 0 && data.code !== 200) {
-      throw new Error(`Kie.ai Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
-    }
+      const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(`Kie.ai Image Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
-    }
-
-    const taskId = data?.data?.taskId;
-    if (!taskId) {
-      throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
-    }
-
-    // Now, poll internally until the image generation completes to return a synchronous OpenAI response
-    const maxRetries = 25; // max 50 seconds
-    for (let i = 0; i < maxRetries; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      const status = await queryKieTaskStatus({ cleanBase, apiKey, taskId, extraHeaders: provider.extraHeaders });
-      if (status.state === "success") {
-        return {
-          created: Math.floor(Date.now() / 1000),
-          data: status.resultUrls.map((url) => ({ url })),
-        };
+      if (data?.code && data.code !== 0 && data.code !== 200) {
+        throw new Error(`Kie.ai Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
       }
-      if (status.state === "fail") {
-        throw new Error(`Kie.ai Image Generation Failed: ${status.failMsg || "Unknown error"}`);
+
+      if (!res.ok) {
+        throw new Error(`Kie.ai Image Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
       }
+
+      const taskId = data?.data?.taskId;
+      if (!taskId) {
+        throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
+      }
+
+      const maxRetries = 25;
+      for (let i = 0; i < maxRetries; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const status = await queryKieTaskStatus({ cleanBase, apiKey, taskId, extraHeaders: provider.extraHeaders });
+        if (status.state === "success") {
+          return {
+            created: Math.floor(Date.now() / 1000),
+            data: status.resultUrls.map((url) => ({ url })),
+          };
+        }
+        if (status.state === "fail") {
+          throw new Error(`Kie.ai Image Generation Failed: ${status.failMsg || "Unknown error"}`);
+        }
+      }
+
+      throw new Error("Kie.ai Image Generation Timeout (50s exceeded). Please check task status in dashboard.");
     }
 
-    throw new Error("Kie.ai Image Generation Timeout (50s exceeded). Please check task status in dashboard.");
+    // For non-async image models, fall through to the standard OpenAI-compatible endpoint
   }
 
   // Fallback: standard OpenAI-compatible synchronous image generations
