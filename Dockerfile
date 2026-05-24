@@ -62,14 +62,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.sh ./scripts/e
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/ensure-admin.js ./scripts/ensure-admin.js
 RUN chmod +x ./scripts/entrypoint.sh
 
-# Use pnpm instead of npm to avoid "isDescendantOf" bugs and stay consistent with the project
-# We install these specifically in the runner for the entrypoint automation tasks
-RUN pnpm add pg bcryptjs prisma@7 @prisma/client@7 @prisma/adapter-pg@7 --ignore-scripts
-
-# Regenerate Prisma Client in the standalone output so the versioned engine
-# package (e.g. @prisma/client-<hash>) is present at runtime.
-# Next.js standalone tracing does not pick up this generated package.
-RUN npx prisma generate
+# Copy the generated node_modules from the builder stage to guarantee
+# that the exact same Prisma client version and query engines are present at runtime.
+# This prevents hash mismatches (Cannot find module '@prisma/client-<hash>') with Turbopack/Next.js standalone.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 USER nextjs
 EXPOSE 3000
