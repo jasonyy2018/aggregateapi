@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { AlipaySdk } from 'alipay-sdk';
 import { getAlipayConfig } from '@/lib/payment-config';
+import { rewardReferrer } from '@/lib/referral';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,18 +55,21 @@ export async function POST(req: Request) {
       });
 
       if (transaction) {
-        // Complete transaction and add to balance
+        // Complete transaction and add to balance in USD (pre-saved in transaction.amount)
         await prisma.$transaction([
           prisma.user.update({
             where: { id: transaction.userId },
-            data: { balance: { increment: totalAmount } }
+            data: { balance: { increment: transaction.amount } }
           }),
           prisma.billingTransaction.update({
             where: { id: transaction.id },
             data: { status: 'SUCCESS' }
           })
         ]);
-        console.log(`[ALIPAY] Successfully topped up ${totalAmount} for user ${transaction.userId}`);
+        console.log(`[ALIPAY] Successfully topped up $${transaction.amount} USD for user ${transaction.userId}`);
+        
+        // Award referral commission!
+        await rewardReferrer(prisma, transaction.userId, transaction.amount);
       } else {
         // Just acknowledging it if we already processed it
       }

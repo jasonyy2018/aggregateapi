@@ -1,20 +1,47 @@
 "use client";
 
 import { useLang } from "@/lib/lang-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PaypalCheckout from "@/components/payment/paypal-checkout";
 import AlipayCheckout from "@/components/payment/alipay-checkout";
 
 export function BillingClient({ 
   initialBalance, 
-  history 
+  history,
+  referralCode,
+  referralCount,
+  referralEarnings
 }: { 
   initialBalance: number;
   history: any[];
+  referralCode: string;
+  referralCount: number;
+  referralEarnings: number;
 }) {
   const { t } = useLang();
   const [amount, setAmount] = useState<number>(20);
   const [method, setMethod] = useState<"paypal" | "alipay">("paypal");
+
+  const [referralLink, setReferralLink] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setReferralLink(`${window.location.origin}/?ref=${referralCode}`);
+    }
+  }, [referralCode]);
+
+  const copyToClipboard = (text: string, isLink: boolean) => {
+    navigator.clipboard.writeText(text);
+    if (isLink) {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } else {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
 
   const handlePaymentSuccess = () => {
     // In production, trigger a mutate/refresh to reload user balance.

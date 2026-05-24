@@ -3,6 +3,8 @@ import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { getPrisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { cookies } from "next/headers"
+import { getOrCreateReferralCode } from "@/lib/referral"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
@@ -53,9 +55,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const prisma = getPrisma();
           let dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
+            select: { id: true, referralCode: true }
           });
 
           if (!dbUser) {
+            // Check for referral code in cookies
+            let referredById: string | null = null;
+            try {
+              const cookieStore = await cookies();
+              const refCode = cookieStore.get("referral_code")?.value;
+              if (refCode) {
+                const inviter = await prisma.user.findUnique({
+                  where: { referralCode: refCode },
+                  select: { id: true }
+                });
+                if (inviter) {
+                  referredById = inviter.id;
+                }
+              }
+            } catch (cookieErr) {
+              console.warn("[auth] Failed to read referral cookie:", cookieErr);
+            }
+
+            // Generate a clean invitation code, e.g. REF-XXXX
+            const referralCode = `REF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
             dbUser = await prisma.user.create({
               data: {
                 email: user.email!,
@@ -63,8 +87,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 image: user.image || "",
                 role: "USER",
                 balance: 0,
+                referralCode,
+                referredById,
               },
+              select: { id: true, referralCode: true }
             });
+          } else if (!dbUser.referralCode) {
+            // Auto-generate if missing for existing users
+            await getOrCreateReferralCode(prisma, dbUser.id);
           }
 
           // Store DB user id on the user object so jwt() can read it

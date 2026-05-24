@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { getPaypalConfig } from '@/lib/payment-config';
+import { rewardReferrer } from '@/lib/referral';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,9 @@ export async function POST(req: Request) {
              data: { balance: { increment: tx.amount } }
           })
         ]);
+        
+        // Reward referrer with commission bonus!
+        await rewardReferrer(prisma, tx.userId, tx.amount);
       }
     }
 

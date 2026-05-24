@@ -44,13 +44,19 @@ export async function POST(req: Request) {
 
     // Create tracking order id
     const outTradeNo = `ORDER_${Date.now()}_${session.user.id?.substring(0, 5)}`;
-    console.log("[ALIPAY] Creating order:", outTradeNo, "Amount:", amount);
+    
+    // Convert USD to CNY for Alipay. 1 USD = 7.25 CNY
+    const usdAmount = parseFloat(amount);
+    const EXCHANGE_RATE = 7.25;
+    const cnyAmount = parseFloat((usdAmount * EXCHANGE_RATE).toFixed(2));
+    
+    console.log("[ALIPAY] Creating order:", outTradeNo, "USD:", usdAmount, "CNY:", cnyAmount);
 
-    // Optional: create a PENDING transaction locally
+    // Create a PENDING transaction locally, storing the amount in USD!
     await prisma.billingTransaction.create({
       data: {
         userId: session.user.id!,
-        amount: parseFloat(amount),
+        amount: usdAmount,
         type: 'TOPUP',
         status: 'PENDING',
         providerId: outTradeNo, 
@@ -74,7 +80,7 @@ export async function POST(req: Request) {
         bizContent: {
           outTradeNo: outTradeNo,
           productCode: 'FAST_INSTANT_TRADE_PAY',
-          totalAmount: amount.toString(),
+          totalAmount: cnyAmount.toString(),
           subject: 'AggregatAPI Top-up',
           body: 'API Gateway Account Balance Top-up',
         },
