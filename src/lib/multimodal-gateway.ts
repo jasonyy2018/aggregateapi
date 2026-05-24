@@ -82,12 +82,16 @@ export async function generateImage(args: {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Kie.ai Image Task Creation Failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
+    const data = await res.json();
+
+    if (data?.code && data.code !== 0 && data.code !== 200) {
+      throw new Error(`Kie.ai Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
     }
 
-    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(`Kie.ai Image Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
+    }
+
     const taskId = data?.data?.taskId;
     if (!taskId) {
       throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
@@ -184,12 +188,16 @@ export async function createVideoMusicTask(args: {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Kie.ai Task Creation Failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
+  const data = await res.json();
+
+  if (data?.code && data.code !== 0 && data.code !== 200) {
+    throw new Error(`Kie.ai Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
   }
 
-  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Kie.ai Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
+  }
+
   const taskId = data?.data?.taskId;
   if (!taskId) {
     throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
