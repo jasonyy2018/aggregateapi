@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getPrisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { dictionaries } from "@/lib/i18n";
+import { DiscountEditor } from "@/components/discount-editor";
 
 export default async function AdminUserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,6 +34,10 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
   if (currentUser?.role !== "ADMIN") {
     redirect("/dashboard");
   }
+
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value === "zh" ? "zh" : "en";
+  const t = dictionaries[locale];
 
   const user = await prisma.user.findUnique({
     where: { id },
@@ -91,6 +98,21 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
           <p className="text-sm text-text-muted mb-1 font-medium">Total Lifetime Tokens</p>
           <p className="text-3xl font-bold text-text-main">{totalTokens.toLocaleString()}</p>
         </div>
+      </div>
+
+      {/* Discount Settings */}
+      <div className="max-w-xl">
+        <DiscountEditor
+          userId={user.id}
+          initialDiscountRate={user.discountRate ?? 1.0}
+          translations={{
+            discountRate: t.adminPage.discountRate,
+            discountLabel: t.adminPage.discountLabel,
+            updateDiscount: t.adminPage.updateDiscount,
+            success: t.adminPage.success,
+            error: t.adminPage.error
+          }}
+        />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">

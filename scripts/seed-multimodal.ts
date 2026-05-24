@@ -79,6 +79,9 @@ const multimodalModels = [
   { id: "gpt-image-1.5-text-to-image-high", displayName: "GPT Image 1.5 Text-to-Image High (Kie)", capabilities: ["image"], cost: 0.09, price: 0.11 },
   { id: "gpt-image-1.5-text-to-image-medium", displayName: "GPT Image 1.5 Text-to-Image Medium (Kie)", capabilities: ["image"], cost: 0.016, price: 0.02 },
 
+  // GPT Image 2
+  { id: "gpt-image-2", displayName: "GPT Image 2 (Kie)", capabilities: ["image"], cost: 0.024, price: 0.03 },
+
   // Google Imagen4
   { id: "google-imagen4", displayName: "Google Imagen4 (Kie)", capabilities: ["image"], cost: 0.032, price: 0.04 },
 

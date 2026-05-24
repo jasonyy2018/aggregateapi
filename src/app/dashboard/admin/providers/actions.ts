@@ -620,6 +620,9 @@ export async function importProviderModels(providerId: string) {
         { id: "gpt-image-1.5-text-to-image-high", displayName: "GPT Image 1.5 Text-to-Image High (Kie)", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
         { id: "gpt-image-1.5-text-to-image-medium", displayName: "GPT Image 1.5 Text-to-Image Medium (Kie)", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
 
+        // GPT Image 2
+        { id: "gpt-image-2", displayName: "GPT Image 2 (Kie)", capabilities: ["image"], costInputPer1k: 0.024, inputPricePer1k: 0.03 },
+
         // Google Imagen4
         { id: "google-imagen4", displayName: "Google Imagen4 (Kie)", capabilities: ["image"], costInputPer1k: 0.032, inputPricePer1k: 0.04 },
 

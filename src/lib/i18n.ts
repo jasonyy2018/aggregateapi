@@ -96,6 +96,9 @@ export const dictionaries = {
       noRecords: "No records found.",
       success: "Operation successful",
       error: "Operation failed",
+      discountRate: "Discount Rate",
+      discountLabel: "Set Custom Discount (0.0 - 1.0, e.g. 0.8 is 20% off)",
+      updateDiscount: "Update Discount",
     },
     // API Keys page
     keys: {
@@ -403,6 +406,9 @@ export const dictionaries = {
       noRecords: "未找到相关记录。",
       success: "操作成功",
       error: "操作失败",
+      discountRate: "专属折扣率",
+      discountLabel: "配置折扣率 (0.0 - 1.0，例如 0.8 代表八折，1.0 代表无折扣)",
+      updateDiscount: "更新折扣",
     },
     keys: {
       title: "API 密钥",

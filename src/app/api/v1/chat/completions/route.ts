@@ -74,19 +74,21 @@ export async function POST(req: Request) {
     });
 
     // 5. Bill & log
+    const discountRate = apiKey.user.discountRate ?? 1.0;
+
     if (streaming) {
       // For MVP we do not tap into stream bodies to count tokens;
       // we instead charge a minimum per-request fee using max_tokens heuristic,
       // and let future iterations parse the stream.
       const promptEstimate = estimatePromptTokens(body);
       const outputEstimate = Math.min(body.max_tokens ?? 512, 1024);
-      const cost = computeCost(promptEstimate, outputEstimate, model);
+      const cost = computeCost(promptEstimate, outputEstimate, model) * discountRate;
       void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate + outputEstimate, cost);
       return response;
     }
 
     if (usage) {
-      const cost = computeCost(usage.input, usage.output, model);
+      const cost = computeCost(usage.input, usage.output, model) * discountRate;
       await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, usage.total, cost);
     } else {
       // Just touch lastUsedAt

@@ -76,3 +76,24 @@ export async function toggleUserBan(userId: string, isBanned: boolean) {
     return { error: error.message };
   }
 }
+
+export async function updateUserDiscount(userId: string, discountRate: number) {
+  try {
+    const prisma = await ensureAdmin();
+
+    if (isNaN(discountRate) || discountRate < 0 || discountRate > 1) {
+      throw new Error("Invalid discount rate. Must be between 0.0 and 1.0");
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { discountRate },
+    });
+
+    revalidatePath("/dashboard/admin");
+    revalidatePath(`/dashboard/admin/users/${userId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}

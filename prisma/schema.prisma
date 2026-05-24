@@ -16,6 +16,7 @@ model User {
   role          UserRole  @default(USER)
   isBanned      Boolean   @default(false)
   balance       Float     @default(0.0) // 余额
+  discountRate  Float     @default(1.0) // 折扣率 (e.g. 0.8 represents 20% off)
   referralCode  String?   @unique // 邀请码
   referredById  String?   // 推荐人ID
   createdAt     DateTime  @default(now())

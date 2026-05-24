@@ -49,8 +49,9 @@ export async function POST(req: Request) {
     const { provider, model } = resolved;
 
     // Check balance: image generation requires at least the flat task fee
-    const flatFee = model.inputPricePer1k;
-    if (user.balance < flatFee) {
+    const discountRate = apiKey.user.discountRate ?? 1.0;
+    const finalFee = model.inputPricePer1k * discountRate;
+    if (user.balance < finalFee) {
       return NextResponse.json({ error: "Insufficient balance for this generation" }, { status: 402 });
     }
 
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     });
 
     // 5. Bill & log (image generation is billed flat-rate per request, representing 1000 tokens)
-    await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, flatFee);
+    await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, finalFee);
 
     return NextResponse.json(result);
   } catch (err: any) {
