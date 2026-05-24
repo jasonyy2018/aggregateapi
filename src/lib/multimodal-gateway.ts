@@ -61,6 +61,11 @@ export async function generateImage(args: {
     if (cleanModelId === "flux-dev") cleanModelId = "flux-kontext-dev";
     else if (cleanModelId === "flux-pro") cleanModelId = "flux-kontext-pro";
     else if (cleanModelId === "midjourney") cleanModelId = "mj_txt2img";
+    else if (cleanModelId.startsWith("google-nano-banana-")) {
+      cleanModelId = cleanModelId.replace("google-", "");
+    }
+
+    console.log(`[Kie.ai Image Gateway] Mapping platform model "${upstreamModelId}" to Kie.ai parameter "${cleanModelId}"`);
 
     const payload = {
       model: cleanModelId,
@@ -162,6 +167,11 @@ export async function createVideoMusicTask(args: {
   let cleanModelId = upstreamModelId;
   if (cleanModelId === "kling") cleanModelId = "kling-2.6/text-to-video";
   else if (cleanModelId === "runway") cleanModelId = "runway-gen3/text-to-video";
+  else if (cleanModelId.startsWith("google-veo-3.1-")) {
+    cleanModelId = "veo3";
+  }
+
+  console.log(`[Kie.ai Task Gateway] Mapping platform model "${upstreamModelId}" to Kie.ai parameter "${cleanModelId}"`);
 
   const payload = {
     model: cleanModelId,

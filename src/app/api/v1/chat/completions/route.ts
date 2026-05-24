@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { forwardChatCompletion, type OpenAIChatBody } from "@/lib/llm-gateway";
+import { generateImage, createVideoMusicTask, queryTaskStatus } from "@/lib/multimodal-gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -64,8 +65,156 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Forward
     const upstreamKey = decryptSecret(provider.apiKeyCipher);
+
+    // 3.5 Intercept Image/Video/Music models for unified API completions!
+    const isImage = model.capabilities.includes("image");
+    const isVideo = model.capabilities.includes("video");
+    const isMusic = model.capabilities.includes("music");
+
+    if (isImage || isVideo || isMusic) {
+      // Extract prompt text
+      const lastUserMsg = body.messages?.filter((m: any) => m.role === "user").pop();
+      const prompt = lastUserMsg?.content || "generate";
+      let promptText = "";
+      if (typeof prompt === "string") {
+        promptText = prompt;
+      } else if (Array.isArray(prompt)) {
+        const textItem = prompt.find((item: any) => item.type === "text");
+        promptText = textItem?.text || "";
+      }
+
+      const discountRate = apiKey.user.discountRate ?? 1.0;
+      const finalFee = model.inputPricePer1k * discountRate;
+
+      // Check balance
+      if (user.balance < finalFee) {
+        return openaiError("Insufficient balance for this generation", "insufficient_balance", 402);
+      }
+
+      if (isImage) {
+        const result = await generateImage({
+          provider,
+          apiKey: upstreamKey,
+          upstreamModelId: model.modelId,
+          body: {
+            prompt: promptText,
+            model: model.modelId,
+            size: "1024x1024",
+          },
+        });
+
+        // Bill & log (image generation is billed flat-rate per request, representing 1000 tokens)
+        await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, finalFee);
+
+        const imageUrl = result.data?.[0]?.url || "";
+        const content = `Here is your generated image:\n\n![Generated Image](${imageUrl})\n\n[Open Image in New Tab](${imageUrl})`;
+
+        return NextResponse.json({
+          id: "chatcmpl-" + Math.random().toString(36).substring(7),
+          object: "chat.completion",
+          created: Math.floor(Date.now() / 1000),
+          model: requestedModel,
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content,
+              },
+              finish_reason: "stop",
+            }
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 50,
+            total_tokens: 60,
+          }
+        });
+      } else {
+        // Video or Music Task Creation
+        const taskId = await createVideoMusicTask({
+          provider,
+          apiKey: upstreamKey,
+          upstreamModelId: model.modelId,
+          body: {
+            prompt: promptText,
+            model: model.modelId,
+          },
+        });
+
+        // Bill & log
+        await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, finalFee);
+
+        // Seamless synchronous polling loop for up to 35 seconds to return the generated URL directly in chat!
+        let taskState = "generating";
+        let resultUrls: string[] = [];
+        let failMsg = "";
+
+        const maxRetries = 18; // 18 * 2s = 36s
+        for (let i = 0; i < maxRetries; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          try {
+            const status = await queryTaskStatus({
+              provider,
+              apiKey: upstreamKey,
+              taskId,
+            });
+            taskState = status.state;
+            if (status.state === "success") {
+              resultUrls = status.resultUrls;
+              break;
+            }
+            if (status.state === "fail") {
+              failMsg = status.failMsg || "Generation failed";
+              break;
+            }
+          } catch (err: any) {
+            console.error("Task Status polling failed inside chat completion:", err.message);
+          }
+        }
+
+        let content = "";
+        if (taskState === "success" && resultUrls.length > 0) {
+          const url = resultUrls[0];
+          const isVideoFormat = isVideo || url.endsWith(".mp4") || url.includes("video");
+          if (isVideoFormat) {
+            content = `Here is your generated video:\n\n![Generated Video](${url})\n\n[Download Video](${url})`;
+          } else {
+            content = `Here is your generated audio/music:\n\n[Play / Download Audio](${url})`;
+          }
+        } else if (taskState === "fail") {
+          content = `Failed to generate: ${failMsg || "Upstream generation failed"}`;
+        } else {
+          // Timeout: return Task ID so they can check it or watch progress in dashboard
+          content = `Your generation task is still processing. You can check its progress in your dashboard or poll this status:\n\n* **Task ID**: \`${taskId}\`\n* **Provider**: \`${provider.slug}\`\n* **Model**: \`${model.modelId}\`\n\n[View Task History](/dashboard/billing)`;
+        }
+
+        return NextResponse.json({
+          id: "chatcmpl-" + Math.random().toString(36).substring(7),
+          object: "chat.completion",
+          created: Math.floor(Date.now() / 1000),
+          model: requestedModel,
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content,
+              },
+              finish_reason: "stop",
+            }
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 50,
+            total_tokens: 60,
+          }
+        });
+      }
+    }
+
+    // 4. Forward
     const { streaming, response, usage } = await forwardChatCompletion({
       provider,
       apiKey: upstreamKey,

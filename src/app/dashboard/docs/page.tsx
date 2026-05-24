@@ -14,6 +14,7 @@ export default async function DocsPage() {
   const prisma = getPrisma();
   let userKeys: string[] = [];
   let discountRate = 1.0;
+  let wikiSections: any[] = [];
 
   try {
     const user = await prisma.user.findUnique({
@@ -29,6 +30,11 @@ export default async function DocsPage() {
       select: { key: true },
     });
     userKeys = apiKeys.map((k) => k.key);
+
+    // Query dynamically from database
+    wikiSections = await prisma.wikiSection.findMany({
+      orderBy: { slug: "asc" }
+    });
   } catch (err) {
     console.error("[DocsPage] DB lookup failed:", err);
   }
@@ -37,6 +43,13 @@ export default async function DocsPage() {
     <DocsClient
       userKeys={userKeys}
       discountRate={discountRate}
+      wikiSections={wikiSections.map((s) => ({
+        slug: s.slug,
+        titleEn: s.titleEn,
+        titleZh: s.titleZh,
+        contentEn: s.contentEn,
+        contentZh: s.contentZh,
+      }))}
     />
   );
 }

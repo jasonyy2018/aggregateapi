@@ -50,6 +50,7 @@ export const dictionaries = {
       admin: "Platform Admin",
       adminProviders: "Providers",
       adminPayments: "Gateway Settings",
+      adminWiki: "Wiki Editor",
       signOut: "Sign out",
       stats: {
         balance: "Available Balance",
@@ -362,6 +363,7 @@ export const dictionaries = {
       admin: "平台管理",
       adminProviders: "供应商管理",
       adminPayments: "支付设置",
+      adminWiki: "文档内容编辑",
       signOut: "退出登录",
       stats: {
         balance: "可用余额",

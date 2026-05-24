@@ -203,3 +203,12 @@ enum TransactionStatus {
   SUCCESS
   FAILED
 }
+
+model WikiSection {
+  slug      String   @id // e.g. "intro", "quickstart", etc.
+  titleEn   String
+  titleZh   String
+  contentEn String   @db.Text
+  contentZh String   @db.Text
+  updatedAt DateTime @updatedAt
+}

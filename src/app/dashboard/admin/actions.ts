@@ -97,3 +97,39 @@ export async function updateUserDiscount(userId: string, discountRate: number) {
     return { error: error.message };
   }
 }
+
+export async function updateWikiSection(
+  slug: string,
+  titleEn: string,
+  titleZh: string,
+  contentEn: string,
+  contentZh: string
+) {
+  try {
+    const prisma = await ensureAdmin();
+
+    if (!slug) throw new Error("Slug is required");
+
+    await prisma.wikiSection.upsert({
+      where: { slug },
+      update: {
+        titleEn,
+        titleZh,
+        contentEn,
+        contentZh,
+      },
+      create: {
+        slug,
+        titleEn,
+        titleZh,
+        contentEn,
+        contentZh,
+      },
+    });
+
+    revalidatePath("/dashboard/docs");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
