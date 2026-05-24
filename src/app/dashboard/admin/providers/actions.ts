@@ -517,6 +517,8 @@ type UpstreamModel = {
   contextLength?: number;
   costInputPer1k?: number;  // Upstream cost per 1k input tokens (USD)
   costOutputPer1k?: number; // Upstream cost per 1k output tokens (USD)
+  inputPricePer1k?: number;  // Platform direct selling price override (USD per 1k)
+  outputPricePer1k?: number; // Platform direct selling price override (USD per 1k)
   capabilities?: string[];
 };
 
@@ -559,13 +561,11 @@ export async function importProviderModels(providerId: string) {
         { id: "gemini-1.5-flash", displayName: "Gemini 1.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
         { id: "gemini-2.0-flash", displayName: "Gemini 2.0 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
         { id: "gemini-2.0-flash-thinking", displayName: "Gemini 2.0 Flash Thinking (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
-        { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
-        { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
 
         // Advanced Next-Gen LLMs (Kie.ai)
-        { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus (Kie)", contextLength: 200000, costInputPer1k: 0.001425, costOutputPer1k: 0.007150 },
-        { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet (Kie)", contextLength: 200000, costInputPer1k: 0.000850, costOutputPer1k: 0.004275 },
-        { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat (Kie)", contextLength: 200000, costInputPer1k: 0.001400, costOutputPer1k: 0.008400 },
+        { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus (Kie)", contextLength: 200000, costInputPer1k: 0.001425, costOutputPer1k: 0.007150, inputPricePer1k: 0.001425, outputPricePer1k: 0.007150 },
+        { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet (Kie)", contextLength: 200000, costInputPer1k: 0.000850, costOutputPer1k: 0.004275, inputPricePer1k: 0.000850, outputPricePer1k: 0.004275 },
+        { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat (Kie)", contextLength: 200000, costInputPer1k: 0.001400, costOutputPer1k: 0.008400, inputPricePer1k: 0.001400, outputPricePer1k: 0.008400 },
 
         // Multimodal Models (Kie.ai Native)
         { id: "flux-schnell", displayName: "Flux Schnell (Kie)", capabilities: ["image"], costInputPer1k: 0.05 },
@@ -600,6 +600,45 @@ export async function importProviderModels(providerId: string) {
         { id: "grok-imagine-text-to-video-720p", displayName: "Grok Imagine Text-to-Video 720p (Kie)", capabilities: ["video"], costInputPer1k: 0.015 },
         { id: "grok-imagine-image-to-video-480p", displayName: "Grok Imagine Image-to-Video 480p (Kie)", capabilities: ["video"], costInputPer1k: 0.008 },
         { id: "grok-imagine-text-to-video-480p", displayName: "Grok Imagine Text-to-Video 480p (Kie)", capabilities: ["video"], costInputPer1k: 0.008 },
+
+        // Gemini 2.5 Flash / Pro (Direct Overrides)
+        { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.000300, inputPricePer1k: 0.000090, outputPricePer1k: 0.000750 },
+        { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.000300, costOutputPer1k: 0.002400, inputPricePer1k: 0.000380, outputPricePer1k: 0.003000 },
+
+        // Topaz Image Upscaler
+        { id: "topaz-image-upscaler-8k", displayName: "Topaz Image Upscaler 8K (Kie)", capabilities: ["image"], costInputPer1k: 0.16, inputPricePer1k: 0.20 },
+        { id: "topaz-image-upscaler-4k", displayName: "Topaz Image Upscaler 4K (Kie)", capabilities: ["image"], costInputPer1k: 0.08, inputPricePer1k: 0.10 },
+        { id: "topaz-image-upscaler-2k", displayName: "Topaz Image Upscaler 2K (Kie)", capabilities: ["image"], costInputPer1k: 0.04, inputPricePer1k: 0.05 },
+
+        // Kling 2.6 Motion Control (billed per request/video flat-rate based on average duration)
+        { id: "kling-2.6-motion-control-1080p", displayName: "Kling 2.6 Motion Control 1080P (Kie)", capabilities: ["video"], costInputPer1k: 0.36, inputPricePer1k: 0.45 },
+        { id: "kling-2.6-motion-control-720p", displayName: "Kling 2.6 Motion Control 720P (Kie)", capabilities: ["video"], costInputPer1k: 0.22, inputPricePer1k: 0.275 },
+
+        // GPT Image 1.5
+        { id: "gpt-image-1.5-image-to-image-high", displayName: "GPT Image 1.5 Image-to-Image High (Kie)", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
+        { id: "gpt-image-1.5-image-to-image-medium", displayName: "GPT Image 1.5 Image-to-Image Medium (Kie)", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
+        { id: "gpt-image-1.5-text-to-image-high", displayName: "GPT Image 1.5 Text-to-Image High (Kie)", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
+        { id: "gpt-image-1.5-text-to-image-medium", displayName: "GPT Image 1.5 Text-to-Image Medium (Kie)", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
+
+        // Google Imagen4
+        { id: "google-imagen4", displayName: "Google Imagen4 (Kie)", capabilities: ["image"], costInputPer1k: 0.032, inputPricePer1k: 0.04 },
+
+        // Gemini Omni Video series (billed per request flat-rate)
+        { id: "gemini-omni-video-6s-4k-no-video-input", displayName: "Gemini Omni Video 6s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
+        { id: "gemini-omni-video-4k-with-video-input", displayName: "Gemini Omni Video 4K (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.50, inputPricePer1k: 1.80 },
+        { id: "gemini-omni-video-1080p-with-video-input", displayName: "Gemini Omni Video 1080p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
+        { id: "gemini-omni-video-720p-with-video-input", displayName: "Gemini Omni Video 720p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
+        { id: "gemini-omni-video-10s-4k-no-video-input", displayName: "Gemini Omni Video 10s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.25, inputPricePer1k: 1.50 },
+        { id: "gemini-omni-video-8s-4k-no-video-input", displayName: "Gemini Omni Video 8s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.125, inputPricePer1k: 1.35 },
+        { id: "gemini-omni-video-4s-4k-no-video-input", displayName: "Gemini Omni Video 4s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.875, inputPricePer1k: 1.05 },
+        { id: "gemini-omni-video-10s-1080p-no-video-input", displayName: "Gemini Omni Video 10s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.75, inputPricePer1k: 0.90 },
+        { id: "gemini-omni-video-8s-1080p-no-video-input", displayName: "Gemini Omni Video 8s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
+        { id: "gemini-omni-video-6s-1080p-no-video-input", displayName: "Gemini Omni Video 6s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
+        { id: "gemini-omni-video-4s-1080p-no-video-input", displayName: "Gemini Omni Video 4s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
+        { id: "gemini-omni-video-10s-720p-no-video-input", displayName: "Gemini Omni Video 10s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.75, inputPricePer1k: 0.90 },
+        { id: "gemini-omni-video-8s-720p-no-video-input", displayName: "Gemini Omni Video 8s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
+        { id: "gemini-omni-video-6s-720p-no-video-input", displayName: "Gemini Omni Video 6s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
+        { id: "gemini-omni-video-4s-720p-no-video-input", displayName: "Gemini Omni Video 4s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
       ];
     } else if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
@@ -651,42 +690,60 @@ export async function importProviderModels(providerId: string) {
       throw new Error(`Unsupported protocol: ${p.protocol}`);
     }
 
-    let added = 0;
-    let skipped = 0;
+    let synced = 0;
     for (const m of upstreamModels) {
       if (!m.id) continue;
       const costIn = m.costInputPer1k ?? 0;
       const costOut = m.costOutputPer1k ?? 0;
-      // Auto-apply default margin if we know the cost
-      const prices =
-        settings.autoApplyMargin && (costIn > 0 || costOut > 0)
-          ? applyMargin(costIn, costOut, settings.defaultMarginPct)
-          : { inputPricePer1k: 0, outputPricePer1k: 0 };
-      try {
-        await prisma.providerModel.create({
-          data: {
+
+      let inputPrice = m.inputPricePer1k;
+      let outputPrice = m.outputPricePer1k;
+      if (inputPrice === undefined || outputPrice === undefined) {
+        const prices =
+          settings.autoApplyMargin && (costIn > 0 || costOut > 0)
+            ? applyMargin(costIn, costOut, settings.defaultMarginPct)
+            : { inputPricePer1k: 0, outputPricePer1k: 0 };
+        if (inputPrice === undefined) inputPrice = prices.inputPricePer1k;
+        if (outputPrice === undefined) outputPrice = prices.outputPricePer1k;
+      }
+
+      await prisma.providerModel.upsert({
+        where: {
+          providerId_modelId: {
             providerId: p.id,
             modelId: m.id,
-            displayName: m.displayName || m.id,
-            contextLength: m.contextLength ?? null,
-            costInputPer1k: costIn,
-            costOutputPer1k: costOut,
-            inputPricePer1k: prices.inputPricePer1k,
-            outputPricePer1k: prices.outputPricePer1k,
-            capabilities: m.capabilities || [],
-            isEnabled: false, // import as disabled by default - admin must explicitly enable
           },
-        });
-        added++;
-      } catch {
-        skipped++; // Unique constraint => already exists
-      }
+        },
+        update: {
+          displayName: m.displayName || m.id,
+          contextLength: m.contextLength ?? null,
+          costInputPer1k: costIn,
+          costOutputPer1k: costOut,
+          inputPricePer1k: inputPrice,
+          outputPricePer1k: outputPrice,
+          capabilities: m.capabilities || [],
+          ...(isKie ? { isEnabled: true } : {}),
+        },
+        create: {
+          providerId: p.id,
+          modelId: m.id,
+          displayName: m.displayName || m.id,
+          contextLength: m.contextLength ?? null,
+          costInputPer1k: costIn,
+          costOutputPer1k: costOut,
+          inputPricePer1k: inputPrice,
+          outputPricePer1k: outputPrice,
+          capabilities: m.capabilities || [],
+          isEnabled: isKie ? true : false,
+        },
+      });
+      synced++;
     }
 
     revalidatePath("/dashboard/admin/providers");
     return {
       success: true,
-      message: `Imported ${added}, skipped ${skipped} (already exist). Auto-applied ${(settings.defaultMarginPct * 100).toFixed(0)}% margin where cost was known.`,
+      message: `Successfully synchronized ${synced} models for ${p.name}. Auto-applied ${(settings.defaultMarginPct * 100).toFixed(0)}% margin where cost was known. KIE models were automatically enabled!`,
     };
   } catch (err: any) {
     return { error: err.message };
