@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createApiKey, toggleApiKeyStatus, deleteApiKey } from "./actions";
 import { useLang } from "@/lib/lang-context";
-import { Copy, Trash2, ShieldAlert, ShieldCheck, Check, Key } from "lucide-react";
+import { Copy, Trash2, ShieldAlert, ShieldCheck, Check, Key, Eye, EyeOff } from "lucide-react";
 
 interface KeyType {
   id: string;
@@ -21,6 +21,9 @@ export function KeysClient({ initialKeys }: { initialKeys: KeyType[] }) {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+
   const handleCreate = async () => {
     setLoading(true);
     const result = await createApiKey(newKeyName || "My API Key");
@@ -34,10 +37,22 @@ export function KeysClient({ initialKeys }: { initialKeys: KeyType[] }) {
     setLoading(false);
   };
 
-  const handleCopy = (text: string) => {
+  const toggleKeyVisibility = (keyId: string) => {
+    setVisibleKeys((prev) => ({
+      ...prev,
+      [keyId]: !prev[keyId],
+    }));
+  };
+
+  const handleCopy = (text: string, keyId?: string) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (keyId) {
+      setCopiedKeyId(keyId);
+      setTimeout(() => setCopiedKeyId(null), 2000);
+    } else {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -83,10 +98,30 @@ export function KeysClient({ initialKeys }: { initialKeys: KeyType[] }) {
                       {k.isActive ? t.keys.active : t.keys.revoked}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 group">
-                    <code className="text-xs text-text-muted bg-bg-main px-2 py-1 rounded border border-border-subtle">
-                      {k.key.substring(0, 12)}••••••••••••••••
+                  <div className="flex items-center gap-2 group mt-1">
+                    <code className="text-xs font-mono text-text-muted bg-bg-main px-2.5 py-1.5 rounded-lg border border-border-subtle select-all">
+                      {visibleKeys[k.id] ? k.key : `${k.key.substring(0, 12)}••••••••••••••••`}
                     </code>
+                    
+                    <button
+                      onClick={() => toggleKeyVisibility(k.id)}
+                      className="p-1.5 hover:bg-bg-surface-hover rounded-lg transition-colors text-text-muted hover:text-text-main"
+                      title={visibleKeys[k.id] ? "Hide API Key" : "Show API Key"}
+                    >
+                      {visibleKeys[k.id] ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+
+                    <button
+                      onClick={() => handleCopy(k.key, k.id)}
+                      className="p-1.5 hover:bg-bg-surface-hover rounded-lg transition-colors text-text-muted hover:text-text-main"
+                      title="Copy API Key"
+                    >
+                      {copiedKeyId === k.id ? (
+                        <Check size={15} className="text-green-500" />
+                      ) : (
+                        <Copy size={15} />
+                      )}
+                    </button>
                   </div>
                   <span className="text-[10px] text-text-muted">Created: {new Date(k.createdAt).toLocaleDateString()}</span>
                 </div>

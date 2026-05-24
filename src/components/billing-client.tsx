@@ -4,6 +4,7 @@ import { useLang } from "@/lib/lang-context";
 import { useState, useEffect } from "react";
 import PaypalCheckout from "@/components/payment/paypal-checkout";
 import AlipayCheckout from "@/components/payment/alipay-checkout";
+import { Gift, Copy, Check, Users, DollarSign, Share2, UserCheck, Coins } from "lucide-react";
 
 export function BillingClient({ 
   initialBalance, 
@@ -147,6 +148,156 @@ export function BillingClient({
                 </div>
               ))
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Referral Card */}
+      <div className="bg-bg-surface border border-border-subtle rounded-3xl p-8 md:p-10 shadow-lg relative overflow-hidden group">
+        {/* Subtle decorative background gradient */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none group-hover:bg-brand-primary/10 transition-colors duration-500" />
+        
+        <div className="relative flex flex-col md:flex-row gap-8 items-start justify-between border-b border-border-subtle pb-8 mb-8">
+          <div className="max-w-2xl flex flex-col gap-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-full text-xs font-bold uppercase tracking-wider w-fit">
+              <Gift size={14} />
+              {(t.billingPage as any).referralTitle}
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-text-main tracking-tight">
+              {(t.billingPage as any).referralSubtitle}
+            </h2>
+            <p className="text-sm text-text-muted leading-relaxed">
+              {(t.billingPage as any).referralDesc}
+            </p>
+          </div>
+
+          {/* Stats Badges */}
+          <div className="flex gap-4 w-full md:w-auto self-stretch md:self-auto items-stretch md:items-center">
+            {/* Stat 1: Referred Count */}
+            <div className="flex-1 md:flex-initial flex items-center gap-4 bg-bg-main border border-border-subtle rounded-2xl px-6 py-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                <Users size={22} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-text-muted font-medium">{(t.billingPage as any).invitedCount}</span>
+                <span className="text-2xl font-bold font-mono text-text-main">{referralCount}</span>
+              </div>
+            </div>
+
+            {/* Stat 2: Cumulative Earnings */}
+            <div className="flex-1 md:flex-initial flex items-center gap-4 bg-bg-main border border-border-subtle rounded-2xl px-6 py-4">
+              <div className="w-12 h-12 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center shrink-0">
+                <DollarSign size={22} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-text-muted font-medium">{(t.billingPage as any).totalEarnings}</span>
+                <span className="text-2xl font-bold font-mono text-green-500">${referralEarnings.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Copy Area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          {/* Referral Link Copy */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-text-muted">{(t.billingPage as any).shareLink}</label>
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                readOnly
+                value={referralLink}
+                className="w-full pl-4 pr-32 py-3 bg-bg-main border border-border-subtle rounded-xl font-mono text-sm text-text-main select-all focus:outline-none"
+              />
+              <button
+                onClick={() => copyToClipboard(referralLink, true)}
+                className="absolute right-2 px-4 py-2 bg-brand-primary text-brand-primary-text rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check size={14} />
+                    {(t.billingPage as any).copied}
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    {(t.billingPage as any).copyLink}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Referral Code Copy */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-text-muted">{(t.billingPage as any).shareCode}</label>
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                readOnly
+                value={referralCode}
+                className="w-full pl-4 pr-32 py-3 bg-bg-main border border-border-subtle rounded-xl font-mono text-sm text-text-main select-all focus:outline-none"
+              />
+              <button
+                onClick={() => copyToClipboard(referralCode, false)}
+                className="absolute right-2 px-4 py-2 bg-bg-surface border border-border-subtle text-text-main rounded-lg text-xs font-bold hover:bg-bg-surface-hover active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check size={14} className="text-green-500" />
+                    {(t.billingPage as any).copied}
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    {(t.billingPage as any).copyCode}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* How it works */}
+        <div className="pt-8 border-t border-border-subtle">
+          <h3 className="text-sm font-bold text-text-main mb-6 uppercase tracking-wider flex items-center gap-2">
+            <Coins size={16} className="text-brand-primary" />
+            {(t.billingPage as any).howItWorks}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Step 1 */}
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
+                <Share2 size={18} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h4 className="text-sm font-bold text-text-main">{(t.billingPage as any).step1Title}</h4>
+                <p className="text-xs text-text-muted leading-relaxed">{(t.billingPage as any).step1Desc}</p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                <UserCheck size={18} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h4 className="text-sm font-bold text-text-main">{(t.billingPage as any).step2Title}</h4>
+                <p className="text-xs text-text-muted leading-relaxed">{(t.billingPage as any).step2Desc}</p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center shrink-0">
+                <Gift size={18} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h4 className="text-sm font-bold text-text-main">{(t.billingPage as any).step3Title}</h4>
+                <p className="text-xs text-text-muted leading-relaxed">{(t.billingPage as any).step3Desc}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

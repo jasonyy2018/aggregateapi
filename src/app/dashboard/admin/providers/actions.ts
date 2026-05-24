@@ -517,6 +517,7 @@ type UpstreamModel = {
   contextLength?: number;
   costInputPer1k?: number;  // Upstream cost per 1k input tokens (USD)
   costOutputPer1k?: number; // Upstream cost per 1k output tokens (USD)
+  capabilities?: string[];
 };
 
 export async function importProviderModels(providerId: string) {
@@ -560,6 +561,15 @@ export async function importProviderModels(providerId: string) {
         { id: "gemini-2.0-flash-thinking", displayName: "Gemini 2.0 Flash Thinking (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
         { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
         { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+
+        // Multimodal Models (Kie.ai Native)
+        { id: "flux-schnell", displayName: "Flux Schnell (Kie)", capabilities: ["image"], costInputPer1k: 0.05 },
+        { id: "flux-dev", displayName: "Flux Dev (Kie)", capabilities: ["image"], costInputPer1k: 0.10 },
+        { id: "flux-pro", displayName: "Flux Pro (Kie)", capabilities: ["image"], costInputPer1k: 0.15 },
+        { id: "midjourney", displayName: "Midjourney v6 (Kie)", capabilities: ["image"], costInputPer1k: 0.20 },
+        { id: "kling", displayName: "Kling Video (Kie)", capabilities: ["video"], costInputPer1k: 0.25 },
+        { id: "runway", displayName: "Runway Gen-3 (Kie)", capabilities: ["video"], costInputPer1k: 0.30 },
+        { id: "suno", displayName: "Suno AI Music v3.5 (Kie)", capabilities: ["music"], costInputPer1k: 0.15 },
       ];
     } else if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
@@ -633,6 +643,7 @@ export async function importProviderModels(providerId: string) {
             costOutputPer1k: costOut,
             inputPricePer1k: prices.inputPricePer1k,
             outputPricePer1k: prices.outputPricePer1k,
+            capabilities: m.capabilities || [],
             isEnabled: false, // import as disabled by default - admin must explicitly enable
           },
         });
