@@ -4,7 +4,7 @@ import { useLang } from "@/lib/lang-context";
 import { useState, useEffect } from "react";
 import PaypalCheckout from "@/components/payment/paypal-checkout";
 import AlipayCheckout from "@/components/payment/alipay-checkout";
-import { Gift, Copy, Check, Users, DollarSign, Share2, UserCheck, Coins } from "lucide-react";
+import { Gift, Copy, Check, Users, DollarSign, Share2, UserCheck, Coins, Download } from "lucide-react";
 
 export function BillingClient({ 
   initialBalance, 
@@ -19,9 +19,9 @@ export function BillingClient({
   referralCount: number;
   referralEarnings: number;
 }) {
-  const { t } = useLang();
+  const { t, locale } = useLang();
   const [amount, setAmount] = useState<number>(20);
-  const [method, setMethod] = useState<"paypal" | "alipay">("paypal");
+  const [method, setMethod] = useState<"paypal" | "alipay">(locale === "zh" ? "alipay" : "paypal");
 
   const [referralLink, setReferralLink] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
@@ -42,6 +42,35 @@ export function BillingClient({
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
     }
+  };
+
+  const downloadBillingHistory = () => {
+    if (history.length === 0) return;
+    
+    const isZh = locale === "zh";
+    const headers = isZh 
+      ? "日期,类型,金额,状态\n" 
+      : "Date,Type,Amount,Status\n";
+      
+    const rows = history.map(tx => {
+      const date = tx.date.replace(/,/g, "");
+      const type = tx.type.replace(/,/g, "");
+      const amount = tx.amount.replace(/,/g, "");
+      const status = tx.status.replace(/,/g, "");
+      return `${date},${type},${amount},${status}`;
+    }).join("\n");
+    
+    const csvContent = "\uFEFF" + headers + rows;
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `aggregatapi_billing_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handlePaymentSuccess = () => {
@@ -72,7 +101,7 @@ export function BillingClient({
             {/* Amount Selection */}
             <div>
               <h3 className="font-medium mb-3">{t.billingPage.selectAmount}</h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 {[10, 20, 50, 100].map((val) => (
                   <button
                     key={val}
@@ -86,6 +115,23 @@ export function BillingClient({
                     ${val}
                   </button>
                 ))}
+                
+                {/* Custom Amount Input */}
+                <div className="relative flex items-center ml-2 border border-border-subtle rounded-lg bg-bg-main focus-within:border-brand-primary px-3 py-1.5 w-36 transition-all">
+                  <span className="text-text-muted text-sm mr-1">$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={amount || ""}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setAmount(isNaN(val) ? 0 : val);
+                    }}
+                    placeholder={locale === "zh" ? "自定义金额" : "Custom"}
+                    className="w-full bg-transparent border-0 outline-none text-sm text-text-main font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
               </div>
             </div>
 
@@ -124,7 +170,18 @@ export function BillingClient({
 
         {/* Transaction History preview */}
         <div className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
-          <h2 className="text-xl font-bold mb-6">{t.billingPage.history}</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold">{t.billingPage.history}</h2>
+            {history.length > 0 && (
+              <button
+                onClick={downloadBillingHistory}
+                className="px-3.5 py-1.5 bg-bg-main hover:bg-bg-surface-hover border border-border-subtle text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 hover:text-brand-primary"
+              >
+                <Download size={14} />
+                <span>{locale === "zh" ? "下载账单" : "Download Invoice"}</span>
+              </button>
+            )}
+          </div>
           <div className="flex flex-col gap-4">
             {history.length === 0 ? (
               <div className="py-12 text-center text-text-muted italic">

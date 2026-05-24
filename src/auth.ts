@@ -18,7 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     CredentialsProvider({
-      name: "Admin Credentials",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
@@ -31,7 +31,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email: credentials.email as string }
         });
 
-        if (user && user.role === "ADMIN" && user.password) {
+        if (user && user.password) {
           const isValid = await bcrypt.compare(credentials.password as string, user.password);
           if (isValid) {
             return { id: user.id, name: user.name, email: user.email, image: user.image, role: user.role };
