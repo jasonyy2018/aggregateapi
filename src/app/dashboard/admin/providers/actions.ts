@@ -432,6 +432,31 @@ export async function testProviderConnection(providerId: string) {
     const apiKey = decryptSecret(p.apiKeyCipher);
     const base = p.baseUrl.replace(/\/+$/, "");
 
+    const isKie = p.slug.toLowerCase() === "kie" || base.includes("kie.ai");
+    if (isKie) {
+      // Test Kie.ai using its credit query endpoint which requires Bearer token auth
+      const cleanBase = base.replace(/\/v1$/, ""); // Remove trailing /v1 if present to target the root API path
+      const res = await fetch(`${cleanBase}/api/v1/chat/credit`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          ...(p.extraHeaders as Record<string, string> | null ?? {}),
+        },
+      });
+      if (!res.ok) {
+        // Try absolute fallback URL to make sure we reach the correct root URL
+        const fallbackRes = await fetch("https://api.kie.ai/api/v1/chat/credit", {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        });
+        if (!fallbackRes.ok) {
+          const text = await fallbackRes.text();
+          throw new Error(`Kie.ai Authentication Failed (HTTP ${fallbackRes.status}): ${text.slice(0, 100)}`);
+        }
+      }
+      return { success: true, message: `OK - Successfully connected to Kie.ai (API Key is valid)` };
+    }
+
     if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
         headers: {
@@ -507,7 +532,36 @@ export async function importProviderModels(providerId: string) {
 
     let upstreamModels: UpstreamModel[] = [];
 
-    if (p.protocol === "OPENAI") {
+    const isKie = p.slug.toLowerCase() === "kie" || base.includes("kie.ai");
+
+    if (isKie) {
+      // Pre-configured model list for Kie.ai
+      upstreamModels = [
+        // OpenAI
+        { id: "gpt-4o", displayName: "GPT-4o (Kie)", contextLength: 128000, costInputPer1k: 0.0025, costOutputPer1k: 0.010 },
+        { id: "gpt-4o-mini", displayName: "GPT-4o-mini (Kie)", contextLength: 128000, costInputPer1k: 0.00015, costOutputPer1k: 0.0006 },
+        { id: "o1", displayName: "OpenAI o1 (Kie)", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.060 },
+        { id: "o1-mini", displayName: "OpenAI o1-mini (Kie)", contextLength: 128000, costInputPer1k: 0.003, costOutputPer1k: 0.012 },
+        { id: "o3-mini", displayName: "OpenAI o3-mini (Kie)", contextLength: 200000, costInputPer1k: 0.0011, costOutputPer1k: 0.0044 },
+
+        // Anthropic
+        { id: "claude-3-5-sonnet", displayName: "Claude 3.5 Sonnet (Kie)", contextLength: 200000, costInputPer1k: 0.003, costOutputPer1k: 0.015 },
+        { id: "claude-3-5-haiku", displayName: "Claude 3.5 Haiku (Kie)", contextLength: 200000, costInputPer1k: 0.0008, costOutputPer1k: 0.004 },
+        { id: "claude-3-opus", displayName: "Claude 3 Opus (Kie)", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075 },
+
+        // DeepSeek
+        { id: "deepseek-chat", displayName: "DeepSeek V3 (Kie)", contextLength: 64000, costInputPer1k: 0.00014, costOutputPer1k: 0.00028 },
+        { id: "deepseek-r1", displayName: "DeepSeek R1 (Kie)", contextLength: 64000, costInputPer1k: 0.00055, costOutputPer1k: 0.00219 },
+
+        // Google Gemini
+        { id: "gemini-1.5-pro", displayName: "Gemini 1.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
+        { id: "gemini-1.5-flash", displayName: "Gemini 1.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+        { id: "gemini-2.0-flash", displayName: "Gemini 2.0 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+        { id: "gemini-2.0-flash-thinking", displayName: "Gemini 2.0 Flash Thinking (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+        { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
+        { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+      ];
+    } else if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
