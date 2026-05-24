@@ -1,15 +1,32 @@
-"use client";
-import { useLang } from "@/lib/lang-context";
-import { useTheme } from "@/lib/theme-context";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { getPrisma } from "@/lib/prisma";
+import { dictionaries } from "@/lib/i18n";
+import { cookies } from "next/headers";
+import { SettingsClient } from "./settings-client";
 
-export default function SettingsPage() {
-  const { t, locale, setLocale } = useLang();
-  const { theme, toggleTheme } = useTheme();
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/");
+
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, email: true },
+  });
+
+  if (!user) redirect("/");
+
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value === "zh" ? "zh" : "en";
+  const t = dictionaries[locale];
 
   return (
     <>
       <header className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-text-main">
           {t.settingsPage.title}
         </h1>
         <p className="mt-2 text-text-muted">
@@ -17,125 +34,7 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <div className="max-w-2xl space-y-8">
-        {/* Profile Section */}
-        <section className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
-          <h2 className="text-xl font-bold mb-2">{t.settingsPage.profile}</h2>
-          <p className="text-sm text-text-muted mb-6">
-            {t.settingsPage.profileDesc}
-          </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-muted mb-1">
-                {t.settingsPage.name}
-              </label>
-              <input
-                type="text"
-                disabled
-                value="Dev User"
-                className="w-full bg-bg-main border border-border-subtle rounded-lg px-4 py-2 text-text-main opacity-50 cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-muted mb-1">
-                {t.settingsPage.email}
-              </label>
-              <input
-                type="email"
-                disabled
-                value="dev@example.com"
-                className="w-full bg-bg-main border border-border-subtle rounded-lg px-4 py-2 text-text-main opacity-50 cursor-not-allowed"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Preferences Section */}
-        <section className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
-          <h2 className="text-xl font-bold mb-6">{t.settingsPage.preferences}</h2>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">{t.settingsPage.language}</div>
-                <div className="text-sm text-text-muted">
-                  {locale === "en" ? "English" : "中文"}
-                </div>
-              </div>
-              <div className="flex bg-bg-main border border-border-subtle rounded-lg p-1">
-                <button
-                  onClick={() => setLocale("en")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    locale === "en"
-                      ? "bg-bg-surface shadow-sm border border-border-subtle"
-                      : "text-text-muted hover:text-text-main"
-                  }`}
-                >
-                  English
-                </button>
-                <button
-                  onClick={() => setLocale("zh")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    locale === "zh"
-                      ? "bg-bg-surface shadow-sm border border-border-subtle"
-                      : "text-text-muted hover:text-text-main"
-                  }`}
-                >
-                  中文
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">{t.settingsPage.theme}</div>
-                <div className="text-sm text-text-muted">
-                  {theme === "dark" ? t.settingsPage.dark : t.settingsPage.light}
-                </div>
-              </div>
-              <div className="flex bg-bg-main border border-border-subtle rounded-lg p-1">
-                <button
-                  onClick={() => theme === "dark" && toggleTheme()}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    theme === "light"
-                      ? "bg-bg-surface shadow-sm border border-border-subtle"
-                      : "text-text-muted hover:text-text-main"
-                  }`}
-                >
-                  {t.settingsPage.light}
-                </button>
-                <button
-                  onClick={() => theme === "light" && toggleTheme()}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    theme === "dark"
-                      ? "bg-bg-surface shadow-sm border border-border-subtle"
-                      : "text-text-muted hover:text-text-main"
-                  }`}
-                >
-                  {t.settingsPage.dark}
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Danger Zone */}
-        <section className="border border-red-500/20 rounded-2xl p-8 bg-red-500/5">
-          <h2 className="text-xl font-bold text-red-500 mb-2">
-            {t.settingsPage.dangerZone}
-          </h2>
-          <p className="text-sm text-red-500/80 mb-6">
-            {t.settingsPage.dangerDesc}
-          </p>
-          <div className="flex items-center justify-between">
-            <p className="text-sm max-w-sm text-text-muted">
-              {t.settingsPage.deleteWarn}
-            </p>
-            <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-lg transition-colors">
-              {t.settingsPage.deleteAccount}
-            </button>
-          </div>
-        </section>
-      </div>
+      <SettingsClient initialUser={JSON.parse(JSON.stringify(user))} />
     </>
   );
 }

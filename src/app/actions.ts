@@ -1,6 +1,6 @@
 "use server"
 
-import { signIn, signOut } from "@/auth"
+import { auth, signIn, signOut } from "@/auth"
 import { AuthError } from "next-auth"
 import { getPrisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -92,4 +92,21 @@ export async function signInWithGoogle() {
 
 export async function signOutAction() {
   await signOut({ redirectTo: "/" })
+}
+
+export async function updateUserProfile(name: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  if (!name || name.trim() === "") {
+    return { error: "Name cannot be empty." };
+  }
+
+  const prisma = getPrisma();
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { name: name.trim() },
+  });
+
+  return { success: true };
 }

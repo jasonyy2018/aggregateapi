@@ -32,21 +32,45 @@ export async function GET(req: Request) {
     },
   });
 
-  const data = providers.flatMap((p) =>
-    p.models.map((m) => ({
-      id: `${p.slug}/${m.modelId}`,
-      object: "model",
-      created: Math.floor(m.createdAt.getTime() / 1000),
-      owned_by: p.slug,
-      display_name: m.displayName,
-      context_length: m.contextLength,
-      pricing: {
-        prompt: m.inputPricePer1k,
-        completion: m.outputPricePer1k,
-      },
-      capabilities: m.capabilities,
-    }))
-  );
+  const data: any[] = [];
+  const seenRawIds = new Set<string>();
+
+  for (const p of providers) {
+    for (const m of p.models) {
+      // 1. Add raw clean modelId (e.g. "gpt-4o", "deepseek-chat") for standard client dropdown matches
+      if (!seenRawIds.has(m.modelId)) {
+        seenRawIds.add(m.modelId);
+        data.push({
+          id: m.modelId,
+          object: "model",
+          created: Math.floor(m.createdAt.getTime() / 1000),
+          owned_by: p.slug,
+          display_name: m.displayName,
+          context_length: m.contextLength,
+          pricing: {
+            prompt: m.inputPricePer1k,
+            completion: m.outputPricePer1k,
+          },
+          capabilities: m.capabilities,
+        });
+      }
+
+      // 2. Add provider-qualified modelId (e.g. "kie/gpt-4o") for explicit targeted routing
+      data.push({
+        id: `${p.slug}/${m.modelId}`,
+        object: "model",
+        created: Math.floor(m.createdAt.getTime() / 1000),
+        owned_by: p.slug,
+        display_name: `${m.displayName} (${p.name})`,
+        context_length: m.contextLength,
+        pricing: {
+          prompt: m.inputPricePer1k,
+          completion: m.outputPricePer1k,
+        },
+        capabilities: m.capabilities,
+      });
+    }
+  }
 
   return NextResponse.json({ object: "list", data });
 }

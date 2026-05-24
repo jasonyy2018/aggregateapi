@@ -1,0 +1,175 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useLang } from "@/lib/lang-context";
+import { useTheme } from "@/lib/theme-context";
+import { updateUserProfile } from "@/app/actions";
+
+type SettingsClientProps = {
+  initialUser: {
+    name: string | null;
+    email: string | null;
+  };
+};
+
+export function SettingsClient({ initialUser }: SettingsClientProps) {
+  const { t, locale, setLocale } = useLang();
+  const { theme, toggleTheme } = useTheme();
+  
+  const [name, setName] = useState(initialUser.name || "");
+  const [isPending, startTransition] = useTransition();
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    startTransition(async () => {
+      const res = await updateUserProfile(name);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    });
+  };
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      {/* Profile Section */}
+      <section className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
+        <h2 className="text-xl font-bold mb-2">{t.settingsPage.profile}</h2>
+        <p className="text-sm text-text-muted mb-6">
+          {t.settingsPage.profileDesc}
+        </p>
+        
+        <form onSubmit={handleSaveProfile} className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-1.5">
+                {t.settingsPage.name}
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-bg-main border border-border-subtle rounded-lg px-4 py-2.5 text-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all font-medium"
+                placeholder="Your Name"
+                disabled={isPending}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-1.5">
+                {t.settingsPage.email}
+              </label>
+              <input
+                type="email"
+                disabled
+                value={initialUser.email || ""}
+                className="w-full bg-bg-main border border-border-subtle rounded-lg px-4 py-2.5 text-text-main opacity-50 cursor-not-allowed font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isPending || name.trim() === initialUser.name}
+              className="px-6 py-2.5 bg-brand-primary text-brand-primary-text font-semibold rounded-xl hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm text-sm"
+            >
+              {isPending ? "..." : saveSuccess ? "✓ Saved" : "Save Changes / 保存修改"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* Preferences Section */}
+      <section className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
+        <h2 className="text-xl font-bold mb-6">{t.settingsPage.preferences}</h2>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">{t.settingsPage.language}</div>
+              <div className="text-sm text-text-muted">
+                {locale === "en" ? "English" : "中文"}
+              </div>
+            </div>
+            <div className="flex bg-bg-main border border-border-subtle rounded-lg p-1">
+              <button
+                onClick={() => setLocale("en")}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  locale === "en"
+                    ? "bg-bg-surface shadow-sm border border-border-subtle"
+                    : "text-text-muted hover:text-text-main"
+                }`}
+              >
+                English
+              </button>
+              <button
+                onClick={() => setLocale("zh")}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  locale === "zh"
+                    ? "bg-bg-surface shadow-sm border border-border-subtle"
+                    : "text-text-muted hover:text-text-main"
+                }`}
+              >
+                中文
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">{t.settingsPage.theme}</div>
+              <div className="text-sm text-text-muted">
+                {theme === "dark" ? t.settingsPage.dark : t.settingsPage.light}
+              </div>
+            </div>
+            <div className="flex bg-bg-main border border-border-subtle rounded-lg p-1">
+              <button
+                onClick={() => theme === "dark" && toggleTheme()}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  theme === "light"
+                    ? "bg-bg-surface shadow-sm border border-border-subtle"
+                    : "text-text-muted hover:text-text-main"
+                }`}
+              >
+                {t.settingsPage.light}
+              </button>
+              <button
+                onClick={() => theme === "light" && toggleTheme()}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  theme === "dark"
+                    ? "bg-bg-surface shadow-sm border border-border-subtle"
+                    : "text-text-muted hover:text-text-main"
+                }`}
+              >
+                {t.settingsPage.dark}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Danger Zone */}
+      <section className="border border-red-500/20 rounded-2xl p-8 bg-red-500/5">
+        <h2 className="text-xl font-bold text-red-500 mb-2">
+          {t.settingsPage.dangerZone}
+        </h2>
+        <p className="text-sm text-red-500/80 mb-6">
+          {t.settingsPage.dangerDesc}
+        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm max-w-sm text-text-muted">
+            {t.settingsPage.deleteWarn}
+          </p>
+          <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-lg transition-colors">
+            {t.settingsPage.deleteAccount}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
