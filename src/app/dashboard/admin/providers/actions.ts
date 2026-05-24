@@ -617,11 +617,11 @@ export async function importProviderModels(providerId: string) {
 
         // Multimodal Models (Kie.ai Native)
         { id: "flux-schnell", displayName: "Flux Schnell (Kie)", capabilities: ["image"], costInputPer1k: 0.05 },
-        { id: "flux-dev", displayName: "Flux Dev (Kie)", capabilities: ["image"], costInputPer1k: 0.10 },
-        { id: "flux-pro", displayName: "Flux Pro (Kie)", capabilities: ["image"], costInputPer1k: 0.15 },
-        { id: "midjourney", displayName: "Midjourney v6 (Kie)", capabilities: ["image"], costInputPer1k: 0.20 },
-        { id: "kling", displayName: "Kling Video (Kie)", capabilities: ["video"], costInputPer1k: 0.25 },
-        { id: "runway", displayName: "Runway Gen-3 (Kie)", capabilities: ["video"], costInputPer1k: 0.30 },
+        { id: "flux-kontext-dev", displayName: "Flux Dev (Kie)", capabilities: ["image"], costInputPer1k: 0.10 },
+        { id: "flux-kontext-pro", displayName: "Flux Pro (Kie)", capabilities: ["image"], costInputPer1k: 0.15 },
+        { id: "mj_txt2img", displayName: "Midjourney v6 (Kie)", capabilities: ["image"], costInputPer1k: 0.20 },
+        { id: "kling-2.6/text-to-video", displayName: "Kling Video (Kie)", capabilities: ["video"], costInputPer1k: 0.25 },
+        { id: "runway-gen3/text-to-video", displayName: "Runway Gen-3 (Kie)", capabilities: ["video"], costInputPer1k: 0.30 },
         { id: "suno", displayName: "Suno AI Music v3.5 (Kie)", capabilities: ["music"], costInputPer1k: 0.15 },
 
         // Google Nano Banana series (Kie.ai Image)

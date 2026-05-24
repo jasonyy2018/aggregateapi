@@ -57,8 +57,14 @@ export async function generateImage(args: {
     const size = body.size || "1024x1024";
     const [width, height] = size.split("x").map(Number);
 
+    // Map clean/standard model ID to exact Kie.ai supported parameter
+    let cleanModelId = upstreamModelId;
+    if (cleanModelId === "flux-dev") cleanModelId = "flux-kontext-dev";
+    else if (cleanModelId === "flux-pro") cleanModelId = "flux-kontext-pro";
+    else if (cleanModelId === "midjourney") cleanModelId = "mj_txt2img";
+
     const payload = {
-      model: upstreamModelId,
+      model: cleanModelId,
       input: {
         prompt: body.prompt,
         width: isNaN(width) ? 1024 : width,
@@ -150,8 +156,13 @@ export async function createVideoMusicTask(args: {
   }
 
   const cleanBase = base.replace(/\/v1$/, ""); // Ensure root API
+  // Map clean/standard model ID to exact Kie.ai supported parameter
+  let cleanModelId = upstreamModelId;
+  if (cleanModelId === "kling") cleanModelId = "kling-2.6/text-to-video";
+  else if (cleanModelId === "runway") cleanModelId = "runway-gen3/text-to-video";
+
   const payload = {
-    model: upstreamModelId,
+    model: cleanModelId,
     input: {
       prompt: body.prompt,
       aspect_ratio: body.aspect_ratio || "16:9",
