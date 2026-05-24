@@ -11,14 +11,14 @@ export async function GET(req: Request) {
     // 1. Auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
+      return openaiError("Missing or invalid Authorization header", "invalid_request_error", 401);
     }
     const token = authHeader.slice(7).trim();
     const apiKey = await prisma.apiKey.findUnique({
       where: { key: token },
     });
     if (!apiKey || !apiKey.isActive) {
-      return NextResponse.json({ error: "Invalid or inactive API Key" }, { status: 401 });
+      return openaiError("Invalid or inactive API Key", "invalid_request_error", 401);
     }
 
     // 2. Parse query params
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     const providerSlug = searchParams.get("providerSlug");
 
     if (!taskId || !providerSlug) {
-      return NextResponse.json({ error: "Missing 'taskId' or 'providerSlug' query parameters" }, { status: 400 });
+      return openaiError("Missing 'taskId' or 'providerSlug' query parameters", "invalid_request_error", 400);
     }
 
     // 3. Resolve provider
@@ -35,11 +35,11 @@ export async function GET(req: Request) {
       where: { slug: providerSlug },
     });
     if (!provider || !provider.isEnabled) {
-      return NextResponse.json({ error: `Provider '${providerSlug}' not found or is disabled` }, { status: 404 });
+      return openaiError(`Provider '${providerSlug}' not found or is disabled`, "provider_not_found", 404);
     }
 
     if (!provider.apiKeyCipher) {
-      return NextResponse.json({ error: `Provider '${provider.name}' has no API key configured` }, { status: 503 });
+      return openaiError(`Provider '${provider.name}' has no API key configured`, "api_key_missing", 503);
     }
 
     // 4. Decrypt & Query
@@ -53,6 +53,17 @@ export async function GET(req: Request) {
     return NextResponse.json(status);
   } catch (err: any) {
     console.error("Task Status Query error:", err);
-    return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
+    return openaiError("Internal Server Error: " + err.message, "internal_server_error", 500);
   }
+}
+
+function openaiError(message: string, type = "invalid_request_error", status = 400) {
+  return NextResponse.json({
+    error: {
+      message,
+      type,
+      param: null,
+      code: null
+    }
+  }, { status });
 }

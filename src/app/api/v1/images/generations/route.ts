@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     // 1. Auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
+      return openaiError("Missing or invalid Authorization header", "invalid_request_error", 401);
     }
     const token = authHeader.slice(7).trim();
     const apiKey = await prisma.apiKey.findUnique({
@@ -19,31 +19,30 @@ export async function POST(req: Request) {
       include: { user: true },
     });
     if (!apiKey || !apiKey.isActive) {
-      return NextResponse.json({ error: "Invalid or inactive API Key" }, { status: 401 });
+      return openaiError("Invalid or inactive API Key", "invalid_request_error", 401);
     }
     const user = apiKey.user;
     if (user.isBanned) {
-      return NextResponse.json({ error: "Your account has been suspended" }, { status: 403 });
+      return openaiError("Your account has been suspended", "access_denied", 403);
     }
 
     // 2. Parse body
     const body = (await req.json()) as ImageGenerationBody;
     const requestedModel = body?.model;
     if (!requestedModel) {
-      return NextResponse.json({ error: "Missing 'model' field" }, { status: 400 });
+      return openaiError("Missing 'model' field", "invalid_request_error", 400);
     }
     if (!body?.prompt) {
-      return NextResponse.json({ error: "Missing 'prompt' field" }, { status: 400 });
+      return openaiError("Missing 'prompt' field", "invalid_request_error", 400);
     }
 
     // 3. Resolve model -> provider
     const resolved = await resolveModel(prisma, requestedModel);
     if (!resolved) {
-      return NextResponse.json(
-        {
-          error: `Model '${requestedModel}' is not available. Visit the dashboard /dashboard/models to see available models.`,
-        },
-        { status: 404 }
+      return openaiError(
+        `Model '${requestedModel}' is not available. Visit the dashboard /dashboard/models to see available models.`,
+        "model_not_found",
+        404
       );
     }
     const { provider, model } = resolved;
@@ -52,13 +51,14 @@ export async function POST(req: Request) {
     const discountRate = apiKey.user.discountRate ?? 1.0;
     const finalFee = model.inputPricePer1k * discountRate;
     if (user.balance < finalFee) {
-      return NextResponse.json({ error: "Insufficient balance for this generation" }, { status: 402 });
+      return openaiError("Insufficient balance for this generation", "insufficient_balance", 402);
     }
 
     if (!provider.apiKeyCipher) {
-      return NextResponse.json(
-        { error: `Provider '${provider.name}' has no API key configured` },
-        { status: 503 }
+      return openaiError(
+        `Provider '${provider.name}' has no API key configured`,
+        "api_key_missing",
+        503
       );
     }
 
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (err: any) {
     console.error("Image Gateway error:", err);
-    return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
+    return openaiError("Internal Server Error: " + err.message, "internal_server_error", 500);
   }
 }
 
@@ -139,4 +139,15 @@ async function chargeUser(
   } catch (e) {
     console.error("chargeUser failed:", e);
   }
+}
+
+function openaiError(message: string, type = "invalid_request_error", status = 400) {
+  return NextResponse.json({
+    error: {
+      message,
+      type,
+      param: null,
+      code: null
+    }
+  }, { status });
 }

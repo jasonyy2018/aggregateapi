@@ -17,12 +17,12 @@ export async function GET(req: Request) {
   // Require a valid API key, just like /chat/completions
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Missing Authorization header" }, { status: 401 });
+    return openaiError("Missing or invalid Authorization header", "invalid_request_error", 401);
   }
   const token = authHeader.slice(7).trim();
   const key = await prisma.apiKey.findUnique({ where: { key: token } });
   if (!key || !key.isActive) {
-    return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    return openaiError("Invalid API key", "invalid_request_error", 401);
   }
 
   const providers = await prisma.provider.findMany({
@@ -73,4 +73,15 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ object: "list", data });
+}
+
+function openaiError(message: string, type = "invalid_request_error", status = 400) {
+  return NextResponse.json({
+    error: {
+      message,
+      type,
+      param: null,
+      code: null
+    }
+  }, { status });
 }
