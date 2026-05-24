@@ -68,9 +68,9 @@ export function PlaygroundClient({
 
   // Models partitioned by category
   const chatModels = models.filter((m) => m.providerProtocol === "OPENAI" || m.providerProtocol === "ANTHROPIC" || m.providerProtocol === "GEMINI");
-  const imageModels = models.filter((m) => m.modelId.includes("flux") || m.modelId.includes("midjourney") || m.modelId.includes("dall-e") || m.capabilities.includes("image"));
-  const videoModels = models.filter((m) => m.modelId.includes("kling") || m.modelId.includes("runway") || m.modelId.includes("veo") || m.modelId.includes("video"));
-  const musicModels = models.filter((m) => m.modelId.includes("suno") || m.modelId.includes("udio") || m.modelId.includes("music"));
+  const imageModels = models.filter((m) => m.modelId.includes("flux") || m.modelId.includes("midjourney") || m.modelId.includes("dall-e") || m.modelId.includes("banana") || m.capabilities.includes("image"));
+  const videoModels = models.filter((m) => m.modelId.includes("kling") || m.modelId.includes("runway") || m.modelId.includes("veo") || m.modelId.includes("video") || m.modelId.includes("seedance") || m.modelId.includes("grok") || m.capabilities.includes("video"));
+  const musicModels = models.filter((m) => m.modelId.includes("suno") || m.modelId.includes("udio") || m.modelId.includes("music") || m.capabilities.includes("music"));
 
   // Fallback default arrays
   const finalChatModels = chatModels.length > 0 ? chatModels : models;

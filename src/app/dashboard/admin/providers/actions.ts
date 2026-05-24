@@ -562,6 +562,11 @@ export async function importProviderModels(providerId: string) {
         { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
         { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
 
+        // Advanced Next-Gen LLMs (Kie.ai)
+        { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus (Kie)", contextLength: 200000, costInputPer1k: 0.001425, costOutputPer1k: 0.007150 },
+        { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet (Kie)", contextLength: 200000, costInputPer1k: 0.000850, costOutputPer1k: 0.004275 },
+        { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat (Kie)", contextLength: 200000, costInputPer1k: 0.001400, costOutputPer1k: 0.008400 },
+
         // Multimodal Models (Kie.ai Native)
         { id: "flux-schnell", displayName: "Flux Schnell (Kie)", capabilities: ["image"], costInputPer1k: 0.05 },
         { id: "flux-dev", displayName: "Flux Dev (Kie)", capabilities: ["image"], costInputPer1k: 0.10 },
@@ -570,6 +575,31 @@ export async function importProviderModels(providerId: string) {
         { id: "kling", displayName: "Kling Video (Kie)", capabilities: ["video"], costInputPer1k: 0.25 },
         { id: "runway", displayName: "Runway Gen-3 (Kie)", capabilities: ["video"], costInputPer1k: 0.30 },
         { id: "suno", displayName: "Suno AI Music v3.5 (Kie)", capabilities: ["music"], costInputPer1k: 0.15 },
+
+        // Google Nano Banana series (Kie.ai Image)
+        { id: "google-nano-banana-2-4k", displayName: "Google Nano Banana 2 4K (Kie)", capabilities: ["image"], costInputPer1k: 0.09 },
+        { id: "google-nano-banana-2-2k", displayName: "Google Nano Banana 2 2K (Kie)", capabilities: ["image"], costInputPer1k: 0.06 },
+        { id: "google-nano-banana-2-1k", displayName: "Google Nano Banana 2 1K (Kie)", capabilities: ["image"], costInputPer1k: 0.04 },
+        { id: "google-nano-banana-pro-1-2k", displayName: "Google Nano Banana Pro 1/2K (Kie)", capabilities: ["image"], costInputPer1k: 0.09 },
+        { id: "google-nano-banana-pro-4k", displayName: "Google Nano Banana Pro 4K (Kie)", capabilities: ["image"], costInputPer1k: 0.12 },
+
+        // Seedance 2.0 Video series (Kie.ai Video)
+        { id: "seedance-2.0-720p-no-video-input", displayName: "Seedance 2.0 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.205 },
+        { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.125 },
+        { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.095 },
+        { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.057 },
+
+        // Google Veo 3.1 series (Kie.ai Video)
+        { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Google Veo 3.1 Text-to-Video 1080p (Kie)", capabilities: ["video"], costInputPer1k: 1.28 },
+        { id: "google-veo-3.1-image-to-video-quality-1080p", displayName: "Google Veo 3.1 Image-to-Video 1080p (Kie)", capabilities: ["video"], costInputPer1k: 1.28 },
+        { id: "google-veo-3.1-text-to-video-quality-4k", displayName: "Google Veo 3.1 Text-to-Video 4K (Kie)", capabilities: ["video"], costInputPer1k: 1.85 },
+        { id: "google-veo-3.1-image-to-video-quality-4k", displayName: "Google Veo 3.1 Image-to-Video 4K (Kie)", capabilities: ["video"], costInputPer1k: 1.85 },
+
+        // Grok Imagine Video series (Kie.ai Video)
+        { id: "grok-imagine-image-to-video-720p", displayName: "Grok Imagine Image-to-Video 720p (Kie)", capabilities: ["video"], costInputPer1k: 0.015 },
+        { id: "grok-imagine-text-to-video-720p", displayName: "Grok Imagine Text-to-Video 720p (Kie)", capabilities: ["video"], costInputPer1k: 0.015 },
+        { id: "grok-imagine-image-to-video-480p", displayName: "Grok Imagine Image-to-Video 480p (Kie)", capabilities: ["video"], costInputPer1k: 0.008 },
+        { id: "grok-imagine-text-to-video-480p", displayName: "Grok Imagine Text-to-Video 480p (Kie)", capabilities: ["video"], costInputPer1k: 0.008 },
       ];
     } else if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {

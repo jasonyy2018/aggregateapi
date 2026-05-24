@@ -21,6 +21,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter, log: ['error', 'warn'] });
 
 const multimodalModels = [
+  // Core Multimodal Models
   { id: "flux-schnell", displayName: "Flux Schnell (Kie)", capabilities: ["image"], cost: 0.05, price: 0.06 },
   { id: "flux-dev", displayName: "Flux Dev (Kie)", capabilities: ["image"], cost: 0.10, price: 0.12 },
   { id: "flux-pro", displayName: "Flux Pro (Kie)", capabilities: ["image"], cost: 0.15, price: 0.18 },
@@ -28,6 +29,36 @@ const multimodalModels = [
   { id: "kling", displayName: "Kling Video (Kie)", capabilities: ["video"], cost: 0.25, price: 0.30 },
   { id: "runway", displayName: "Runway Gen-3 (Kie)", capabilities: ["video"], cost: 0.30, price: 0.36 },
   { id: "suno", displayName: "Suno AI Music v3.5 (Kie)", capabilities: ["music"], cost: 0.15, price: 0.18 },
+
+  // Next-Gen LLMs
+  { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus (Kie)", capabilities: ["text"], cost: 0.001425, price: 0.001710 },
+  { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet (Kie)", capabilities: ["text"], cost: 0.000850, price: 0.001020 },
+  { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat (Kie)", capabilities: ["text"], cost: 0.001400, price: 0.001680 },
+
+  // Google Nano Banana series (Image)
+  { id: "google-nano-banana-2-4k", displayName: "Google Nano Banana 2 4K (Kie)", capabilities: ["image"], cost: 0.09, price: 0.11 },
+  { id: "google-nano-banana-2-2k", displayName: "Google Nano Banana 2 2K (Kie)", capabilities: ["image"], cost: 0.06, price: 0.07 },
+  { id: "google-nano-banana-2-1k", displayName: "Google Nano Banana 2 1K (Kie)", capabilities: ["image"], cost: 0.04, price: 0.05 },
+  { id: "google-nano-banana-pro-1-2k", displayName: "Google Nano Banana Pro 1/2K (Kie)", capabilities: ["image"], cost: 0.09, price: 0.11 },
+  { id: "google-nano-banana-pro-4k", displayName: "Google Nano Banana Pro 4K (Kie)", capabilities: ["image"], cost: 0.12, price: 0.14 },
+
+  // Seedance 2.0 Video series (Video)
+  { id: "seedance-2.0-720p-no-video-input", displayName: "Seedance 2.0 720p (No Video Input) (Kie)", capabilities: ["video"], cost: 0.205, price: 0.25 },
+  { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (With Video Input) (Kie)", capabilities: ["video"], cost: 0.125, price: 0.15 },
+  { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (No Video Input) (Kie)", capabilities: ["video"], cost: 0.095, price: 0.11 },
+  { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (With Video Input) (Kie)", capabilities: ["video"], cost: 0.057, price: 0.07 },
+
+  // Google Veo 3.1 series (Video)
+  { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Google Veo 3.1 Text-to-Video 1080p (Kie)", capabilities: ["video"], cost: 1.28, price: 1.54 },
+  { id: "google-veo-3.1-image-to-video-quality-1080p", displayName: "Google Veo 3.1 Image-to-Video 1080p (Kie)", capabilities: ["video"], cost: 1.28, price: 1.54 },
+  { id: "google-veo-3.1-text-to-video-quality-4k", displayName: "Google Veo 3.1 Text-to-Video 4K (Kie)", capabilities: ["video"], cost: 1.85, price: 2.22 },
+  { id: "google-veo-3.1-image-to-video-quality-4k", displayName: "Google Veo 3.1 Image-to-Video 4K (Kie)", capabilities: ["video"], cost: 1.85, price: 2.22 },
+
+  // Grok Imagine Video series (Video)
+  { id: "grok-imagine-image-to-video-720p", displayName: "Grok Imagine Image-to-Video 720p (Kie)", capabilities: ["video"], cost: 0.015, price: 0.02 },
+  { id: "grok-imagine-text-to-video-720p", displayName: "Grok Imagine Text-to-Video 720p (Kie)", capabilities: ["video"], cost: 0.015, price: 0.02 },
+  { id: "grok-imagine-image-to-video-480p", displayName: "Grok Imagine Image-to-Video 480p (Kie)", capabilities: ["video"], cost: 0.008, price: 0.01 },
+  { id: "grok-imagine-text-to-video-480p", displayName: "Grok Imagine Text-to-Video 480p (Kie)", capabilities: ["video"], cost: 0.008, price: 0.01 },
 ];
 
 async function main() {
