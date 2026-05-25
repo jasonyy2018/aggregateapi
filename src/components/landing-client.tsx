@@ -7,11 +7,9 @@ import { useTheme } from "@/lib/theme-context";
 export function LandingClient({
   isLoggedIn,
   userEmail,
-  signInAction,
 }: {
   isLoggedIn: boolean;
   userEmail?: string | null;
-  signInAction: () => void;
 }) {
   const { t, locale, setLocale } = useLang();
   const { theme, toggleTheme } = useTheme();

@@ -5,16 +5,15 @@ import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/lang-context";
 import { useTheme } from "@/lib/theme-context";
 import type { ReactNode } from "react";
+import { signOutAction } from "@/app/actions";
 
 export function DashboardLayoutClient({
   children,
   user,
-  signOutAction,
   isAdmin = false,
 }: {
   children: ReactNode;
   user: { name?: string | null; email?: string | null; image?: string | null };
-  signOutAction: () => void;
   isAdmin?: boolean;
 }) {
   const { t, locale, setLocale } = useLang();

@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { signInWithGoogle } from "./actions";
 import { LandingClient } from "@/components/landing-client";
 import { cookies } from "next/headers";
 
@@ -30,7 +29,6 @@ export default async function Home(props: {
     <LandingClient
       isLoggedIn={!!session?.user}
       userEmail={session?.user?.email}
-      signInAction={signInWithGoogle}
     />
   );
 }
