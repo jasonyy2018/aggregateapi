@@ -66,17 +66,25 @@ export function PlaygroundClient({
   const { t, locale } = useLang();
   const [activeTab, setActiveTab] = useState<"chat" | "image" | "video" | "music">("chat");
 
-  // Models partitioned by category
-  const chatModels = models.filter((m) => m.providerProtocol === "OPENAI" || m.providerProtocol === "ANTHROPIC" || m.providerProtocol === "GEMINI");
-  const imageModels = models.filter((m) => m.modelId.includes("flux") || m.modelId.includes("midjourney") || m.modelId.includes("dall-e") || m.modelId.includes("banana") || m.capabilities.includes("image"));
-  const videoModels = models.filter((m) => m.modelId.includes("kling") || m.modelId.includes("runway") || m.modelId.includes("veo") || m.modelId.includes("video") || m.modelId.includes("seedance") || m.modelId.includes("grok") || m.capabilities.includes("video"));
-  const musicModels = models.filter((m) => m.modelId.includes("suno") || m.modelId.includes("udio") || m.modelId.includes("music") || m.capabilities.includes("music"));
+  // Models partitioned by capability — the DB capabilities field is the single source of truth.
+  // Using providerProtocol to detect chat models is WRONG: Kie.ai serves all models (image, video,
+  // music, LLM) via an OPENAI-protocol provider, so every model would incorrectly match.
+  const imageModels = models.filter((m) => m.capabilities.includes("image"));
+  const videoModels = models.filter((m) => m.capabilities.includes("video"));
+  const musicModels = models.filter((m) => m.capabilities.includes("music"));
+  // Chat (LLM) models: anything that has NO media capability
+  const chatModels = models.filter(
+    (m) =>
+      !m.capabilities.includes("image") &&
+      !m.capabilities.includes("video") &&
+      !m.capabilities.includes("music")
+  );
 
   // Fallback default arrays
-  const finalChatModels = chatModels.length > 0 ? chatModels : models;
-  const finalImageModels = imageModels.length > 0 ? imageModels : models.slice(0, 3);
-  const finalVideoModels = videoModels.length > 0 ? videoModels : models.slice(0, 3);
-  const finalMusicModels = musicModels.length > 0 ? musicModels : models.slice(0, 3);
+  const finalChatModels = chatModels.length > 0 ? chatModels : models.filter(m => m.capabilities.length === 0);
+  const finalImageModels = imageModels.length > 0 ? imageModels : [];
+  const finalVideoModels = videoModels.length > 0 ? videoModels : [];
+  const finalMusicModels = musicModels.length > 0 ? musicModels : [];
 
   // 💬 Chat State
   const [selectedChatModel, setSelectedChatModel] = useState(finalChatModels[0]?.id || "");
@@ -504,11 +512,15 @@ export function PlaygroundClient({
                 className="bg-bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-primary"
                 disabled={!apiKey}
               >
-                {finalChatModels.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName} ({m.id})
-                  </option>
-                ))}
+                {finalChatModels.length === 0 ? (
+                  <option value="">No chat models available</option>
+                ) : (
+                  finalChatModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -588,18 +600,22 @@ export function PlaygroundClient({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-text-muted">1. Select Drawing Model</label>
+                  <label className="text-xs font-bold text-text-muted">1. Select Image Model</label>
                   <select
                     value={selectedImageModel}
                     onChange={(e) => setSelectedImageModel(e.target.value)}
                     className="w-full bg-bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold"
-                    disabled={!apiKey || isImageLoading}
+                    disabled={!apiKey || isImageLoading || finalImageModels.length === 0}
                   >
-                    {finalImageModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.displayName}
-                      </option>
-                    ))}
+                    {finalImageModels.length === 0 ? (
+                      <option value="">No image models enabled</option>
+                    ) : (
+                      finalImageModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -720,13 +736,17 @@ export function PlaygroundClient({
                     value={selectedVideoModel}
                     onChange={(e) => setSelectedVideoModel(e.target.value)}
                     className="w-full bg-bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold"
-                    disabled={!apiKey || isVideoLoading}
+                    disabled={!apiKey || isVideoLoading || finalVideoModels.length === 0}
                   >
-                    {finalVideoModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.displayName}
-                      </option>
-                    ))}
+                    {finalVideoModels.length === 0 ? (
+                      <option value="">No video models enabled</option>
+                    ) : (
+                      finalVideoModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -872,13 +892,17 @@ export function PlaygroundClient({
                     value={selectedMusicModel}
                     onChange={(e) => setSelectedMusicModel(e.target.value)}
                     className="w-full bg-bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold"
-                    disabled={!apiKey || isMusicLoading}
+                    disabled={!apiKey || isMusicLoading || finalMusicModels.length === 0}
                   >
-                    {finalMusicModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.displayName}
-                      </option>
-                    ))}
+                    {finalMusicModels.length === 0 ? (
+                      <option value="">No music models enabled</option>
+                    ) : (
+                      finalMusicModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 

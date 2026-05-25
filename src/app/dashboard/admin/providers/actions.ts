@@ -560,9 +560,26 @@ export async function importProviderModels(providerId: string) {
                 caps.push(...m.capabilities);
               } else {
                 const idLower = m.id.toLowerCase();
-                if (idLower.includes("flux") || idLower.includes("mj") || idLower.includes("midjourney") || idLower.includes("imagen") || idLower.includes("banana")) {
+                // Image model keyword detection
+                if (
+                  idLower.includes("flux") ||
+                  idLower.includes("mj") ||
+                  idLower.includes("midjourney") ||
+                  idLower.includes("imagen") ||
+                  idLower.includes("banana") ||
+                  idLower.includes("gpt-image") ||   // gpt-image-1.5-*, gpt-image-2
+                  idLower.includes("upscaler") ||     // topaz-image-upscaler-*
+                  idLower.includes("topaz")           // topaz-*
+                ) {
                   caps.push("image");
-                } else if (idLower.includes("kling") || idLower.includes("runway") || idLower.includes("veo") || idLower.includes("seedance") || idLower.includes("video")) {
+                } else if (
+                  idLower.includes("kling") ||
+                  idLower.includes("runway") ||
+                  idLower.includes("veo") ||
+                  idLower.includes("seedance") ||
+                  idLower.includes("video") ||
+                  idLower.includes("grok-imagine")    // grok-imagine/image-to-video, text-to-video
+                ) {
                   caps.push("video");
                 } else if (idLower.includes("suno") || idLower.includes("music")) {
                   caps.push("music");

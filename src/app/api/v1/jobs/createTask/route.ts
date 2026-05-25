@@ -98,10 +98,20 @@ export async function POST(req: Request) {
       body: JSON.stringify(upstreamPayload),
     });
 
-    const data = await res.json();
+    // Safely parse response — Kie.ai may return HTML on error (e.g. 404), not JSON
+    const rawText = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      return errorResponse(
+        `Kie.ai returned non-JSON response (HTTP ${res.status}): ${rawText.slice(0, 300)}`,
+        res.status || 502
+      );
+    }
 
     if (!res.ok) {
-      return errorResponse(`Upstream Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data)}`, res.status);
+      return errorResponse(`Upstream Task Creation Failed (HTTP ${res.status}): ${data?.msg || JSON.stringify(data)}`, res.status);
     }
 
     if (data?.code && data.code !== 0 && data.code !== 200) {

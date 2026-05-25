@@ -1,8 +1,52 @@
 /**
  * Multimodal Gateway Service
- * 
+ *
  * Exposes methods to handle Image Generation, Video Generation, and Music Generation tasks,
  * translating standard/clean client requests to upstream APIs (such as Kie.ai).
+ *
+ * Model ID mapping table (platform DB modelId → Kie.ai upstream model + input params):
+ *
+ * IMAGE:
+ *   flux-schnell                        → flux-schnell            (input: width, height)
+ *   flux-dev                            → flux-kontext-dev        (input: width, height)
+ *   flux-pro                            → flux-kontext-pro        (input: width, height)
+ *   midjourney                          → mj_txt2img              (input: width, height)
+ *   google-nano-banana-2-1k             → nano-banana-2           (input: resolution=1K)
+ *   google-nano-banana-2-2k             → nano-banana-2           (input: resolution=2K)
+ *   google-nano-banana-2-4k             → nano-banana-2           (input: resolution=4K)
+ *   google-nano-banana-pro-1-2k         → nano-banana-pro         (input: resolution=2K)
+ *   google-nano-banana-pro-4k           → nano-banana-pro         (input: resolution=4K)
+ *   topaz-image-upscaler-2k             → topaz-image-upscaler    (input: resolution=2K)
+ *   topaz-image-upscaler-4k             → topaz-image-upscaler    (input: resolution=4K)
+ *   topaz-image-upscaler-8k             → topaz-image-upscaler    (input: resolution=8K)
+ *   gpt-image-1.5-text-to-image-high    → gpt-image-1.5/text-to-image   (input: quality=high)
+ *   gpt-image-1.5-text-to-image-medium  → gpt-image-1.5/text-to-image   (input: quality=medium)
+ *   gpt-image-1.5-image-to-image-high   → gpt-image-1.5/image-to-image  (input: quality=high)
+ *   gpt-image-1.5-image-to-image-medium → gpt-image-1.5/image-to-image  (input: quality=medium)
+ *   gpt-image-2                         → gpt-image-2             (input: width, height)
+ *   google-imagen4                      → google-imagen4           (input: width, height)
+ *
+ * VIDEO:
+ *   kling                               → kling-2.6/text-to-video
+ *   runway                              → runway-gen3/text-to-video
+ *   google-veo-3.1-text-to-video-quality-1080p  → veo3
+ *   google-veo-3.1-image-to-video-quality-1080p → veo3
+ *   google-veo-3.1-text-to-video-quality-4k     → veo3
+ *   google-veo-3.1-image-to-video-quality-4k    → veo3
+ *   grok-imagine-text-to-video-480p     → grok-imagine/text-to-video  (input: resolution=480p)
+ *   grok-imagine-text-to-video-720p     → grok-imagine/text-to-video  (input: resolution=720p)
+ *   grok-imagine-image-to-video-480p    → grok-imagine/image-to-video (input: resolution=480p)
+ *   grok-imagine-image-to-video-720p    → grok-imagine/image-to-video (input: resolution=720p)
+ *   seedance-2.0-480p-no-video-input    → seedance-2.0/text-to-video  (input: resolution=480p)
+ *   seedance-2.0-720p-no-video-input    → seedance-2.0/text-to-video  (input: resolution=720p)
+ *   seedance-2.0-480p-with-video-input  → seedance-2.0/image-to-video (input: resolution=480p)
+ *   seedance-2.0-720p-with-video-input  → seedance-2.0/image-to-video (input: resolution=720p)
+ *   kling-2.6-motion-control-720p       → kling-2.6/motion-control    (input: resolution=720p)
+ *   kling-2.6-motion-control-1080p      → kling-2.6/motion-control    (input: resolution=1080p)
+ *   gemini-omni-video-*                 → gemini-omni-video (duration/resolution extracted from ID)
+ *
+ * MUSIC:
+ *   suno                                → suno
  */
 
 export type ImageGenerationBody = {
@@ -20,6 +64,10 @@ export type TaskCreateBody = {
   aspect_ratio?: string;
   duration?: string;
   image_url?: string;
+  image_urls?: string[];
+  resolution?: string;
+  // Grok Imagine specific
+  mode?: string;
   // Music params
   style?: string;
   lyrics?: string;
@@ -34,10 +82,119 @@ export type UnifiedTaskStatus = {
   costTime?: number;
 };
 
+// ─── Internal model mapping helpers ────────────────────────────────────────────
+
+type ImageModelMap = {
+  upstreamModelId: string;
+  inputStyle: "wh" | "resolution" | "quality";
+  resolution?: string;
+  quality?: string;
+};
+
+/** Maps a platform DB modelId to the correct Kie.ai upstream model ID + input params for image generation. */
+function mapImageModel(platformModelId: string): ImageModelMap {
+  const id = platformModelId;
+
+  // ── Flux ──
+  if (id === "flux-schnell") return { upstreamModelId: "flux-schnell", inputStyle: "wh" };
+  if (id === "flux-dev") return { upstreamModelId: "flux-kontext-dev", inputStyle: "wh" };
+  if (id === "flux-pro") return { upstreamModelId: "flux-kontext-pro", inputStyle: "wh" };
+
+  // ── Midjourney ──
+  if (id === "midjourney") return { upstreamModelId: "mj_txt2img", inputStyle: "wh" };
+
+  // ── Google Nano Banana 2 ──
+  if (id === "google-nano-banana-2-1k") return { upstreamModelId: "nano-banana-2", inputStyle: "resolution", resolution: "1K" };
+  if (id === "google-nano-banana-2-2k") return { upstreamModelId: "nano-banana-2", inputStyle: "resolution", resolution: "2K" };
+  if (id === "google-nano-banana-2-4k") return { upstreamModelId: "nano-banana-2", inputStyle: "resolution", resolution: "4K" };
+
+  // ── Google Nano Banana Pro ──
+  if (id === "google-nano-banana-pro-1-2k") return { upstreamModelId: "nano-banana-pro", inputStyle: "resolution", resolution: "2K" };
+  if (id === "google-nano-banana-pro-4k") return { upstreamModelId: "nano-banana-pro", inputStyle: "resolution", resolution: "4K" };
+
+  // ── Topaz Image Upscaler ──
+  if (id === "topaz-image-upscaler-2k") return { upstreamModelId: "topaz-image-upscaler", inputStyle: "resolution", resolution: "2K" };
+  if (id === "topaz-image-upscaler-4k") return { upstreamModelId: "topaz-image-upscaler", inputStyle: "resolution", resolution: "4K" };
+  if (id === "topaz-image-upscaler-8k") return { upstreamModelId: "topaz-image-upscaler", inputStyle: "resolution", resolution: "8K" };
+
+  // ── GPT Image 1.5 ──
+  if (id === "gpt-image-1.5-text-to-image-high")    return { upstreamModelId: "gpt-image-1.5/text-to-image",   inputStyle: "quality", quality: "high" };
+  if (id === "gpt-image-1.5-text-to-image-medium")  return { upstreamModelId: "gpt-image-1.5/text-to-image",   inputStyle: "quality", quality: "medium" };
+  if (id === "gpt-image-1.5-image-to-image-high")   return { upstreamModelId: "gpt-image-1.5/image-to-image",  inputStyle: "quality", quality: "high" };
+  if (id === "gpt-image-1.5-image-to-image-medium") return { upstreamModelId: "gpt-image-1.5/image-to-image",  inputStyle: "quality", quality: "medium" };
+
+  // ── GPT Image 2 ──
+  if (id === "gpt-image-2") return { upstreamModelId: "gpt-image-2", inputStyle: "wh" };
+
+  // ── Google Imagen 4 ──
+  if (id === "google-imagen4") return { upstreamModelId: "google-imagen4", inputStyle: "wh" };
+
+  // Fallback: pass through as-is using width/height
+  return { upstreamModelId: id, inputStyle: "wh" };
+}
+
+type VideoModelMap = {
+  upstreamModelId: string;
+  resolution?: string;
+};
+
+/** Maps a platform DB modelId to the correct Kie.ai upstream model ID + optional resolution for video/music tasks. */
+function mapVideoModel(platformModelId: string): VideoModelMap {
+  const id = platformModelId;
+
+  // ── Legacy ──
+  if (id === "kling") return { upstreamModelId: "kling-2.6/text-to-video" };
+  if (id === "runway") return { upstreamModelId: "runway-gen3/text-to-video" };
+  if (id === "suno") return { upstreamModelId: "suno" };
+
+  // ── Google Veo 3.1 ──
+  if (id.startsWith("google-veo-3.1-")) return { upstreamModelId: "veo3" };
+
+  // ── Grok Imagine ──
+  if (id === "grok-imagine-text-to-video-480p")  return { upstreamModelId: "grok-imagine/text-to-video",  resolution: "480p" };
+  if (id === "grok-imagine-text-to-video-720p")  return { upstreamModelId: "grok-imagine/text-to-video",  resolution: "720p" };
+  if (id === "grok-imagine-image-to-video-480p") return { upstreamModelId: "grok-imagine/image-to-video", resolution: "480p" };
+  if (id === "grok-imagine-image-to-video-720p") return { upstreamModelId: "grok-imagine/image-to-video", resolution: "720p" };
+
+  // ── Seedance 2.0 ──
+  if (id === "seedance-2.0-480p-no-video-input")   return { upstreamModelId: "seedance-2.0/text-to-video",  resolution: "480p" };
+  if (id === "seedance-2.0-720p-no-video-input")   return { upstreamModelId: "seedance-2.0/text-to-video",  resolution: "720p" };
+  if (id === "seedance-2.0-480p-with-video-input") return { upstreamModelId: "seedance-2.0/image-to-video", resolution: "480p" };
+  if (id === "seedance-2.0-720p-with-video-input") return { upstreamModelId: "seedance-2.0/image-to-video", resolution: "720p" };
+
+  // ── Kling 2.6 Motion Control ──
+  if (id === "kling-2.6-motion-control-720p")  return { upstreamModelId: "kling-2.6/motion-control", resolution: "720p" };
+  if (id === "kling-2.6-motion-control-1080p") return { upstreamModelId: "kling-2.6/motion-control", resolution: "1080p" };
+
+  // ── Gemini Omni Video: extract duration + resolution from model ID ──
+  // Format: gemini-omni-video-{dur}s-{res}-{mode} e.g. "gemini-omni-video-6s-4k-no-video-input"
+  if (id.startsWith("gemini-omni-video-")) {
+    return { upstreamModelId: "gemini-omni-video" };
+  }
+
+  // Fallback: pass through as-is
+  return { upstreamModelId: id };
+}
+
+// ─── Safe JSON parse helper ─────────────────────────────────────────────────
+
+async function safeJsonParse(res: Response, context: string): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `${context} returned non-JSON response (HTTP ${res.status}): ${text.slice(0, 300)}`
+    );
+  }
+}
+
+// ─── Public API ────────────────────────────────────────────────────────────
+
 /**
  * 1. Synchronous Image Generation.
  * Maps the standard request to the upstream API and formats back to OpenAI shape.
- * If the upstream is asynchronous (like Kie.ai's Flux/Midjourney), it polls internally 
+ * If the upstream is asynchronous (like Kie.ai's Flux/Midjourney), it polls internally
  * to provide a seamless synchronous response to the client.
  */
 export async function generateImage(args: {
@@ -51,30 +208,33 @@ export async function generateImage(args: {
   const isKie = provider.slug.toLowerCase() === "kie" || base.includes("kie.ai");
 
   if (isKie) {
-    // Kie.ai uses a custom async task endpoint for all image generation
     const cleanBase = base.replace(/\/v1$/, "");
-    const size = body.size || "1024x1024";
-    const [width, height] = size.split("x").map(Number);
+    const { upstreamModelId: kieModelId, inputStyle, resolution, quality } = mapImageModel(upstreamModelId);
 
-    // Map clean/standard model ID to exact Kie.ai supported parameter
-    let cleanModelId = upstreamModelId;
-    if (cleanModelId === "flux-dev") cleanModelId = "flux-kontext-dev";
-    else if (cleanModelId === "flux-pro") cleanModelId = "flux-kontext-pro";
-    else if (cleanModelId === "midjourney") cleanModelId = "mj_txt2img";
-    else if (cleanModelId.startsWith("google-nano-banana-")) {
-      cleanModelId = cleanModelId.replace("google-", "");
+    console.log(`[Kie.ai Image Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}" (inputStyle=${inputStyle})`);
+
+    // Build input object based on model family
+    let input: Record<string, any> = { prompt: body.prompt };
+
+    if (inputStyle === "resolution") {
+      input.resolution = resolution;
+      input.aspect_ratio = "auto";
+    } else if (inputStyle === "quality") {
+      input.quality = quality;
+      // Use size for width/height if provided, otherwise default
+      const size = body.size || "1024x1024";
+      const [w, h] = size.split("x").map(Number);
+      input.width = isNaN(w) ? 1024 : w;
+      input.height = isNaN(h) ? 1024 : h;
+    } else {
+      // "wh" style — standard width/height
+      const size = body.size || "1024x1024";
+      const [w, h] = size.split("x").map(Number);
+      input.width = isNaN(w) ? 1024 : w;
+      input.height = isNaN(h) ? 1024 : h;
     }
 
-    console.log(`[Kie.ai Image Gateway] Mapping platform model "${upstreamModelId}" to Kie.ai parameter "${cleanModelId}"`);
-
-    const payload = {
-      model: cleanModelId,
-      input: {
-        prompt: body.prompt,
-        width: isNaN(width) ? 1024 : width,
-        height: isNaN(height) ? 1024 : height,
-      },
-    };
+    const payload = { model: kieModelId, input };
 
     const res = await fetch(`${cleanBase}/api/v1/jobs/createTask`, {
       method: "POST",
@@ -86,7 +246,7 @@ export async function generateImage(args: {
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
+    const data = await safeJsonParse(res, `Kie.ai createTask[${kieModelId}]`);
 
     if (data?.code && data.code !== 0 && data.code !== 200) {
       throw new Error(`Kie.ai Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
@@ -162,28 +322,33 @@ export async function createVideoMusicTask(args: {
     throw new Error(`Asynchronous task creation is currently only supported for Kie.ai provider. '${provider.slug}' protocol is not supported.`);
   }
 
-  const cleanBase = base.replace(/\/v1$/, ""); // Ensure root API
-  // Map clean/standard model ID to exact Kie.ai supported parameter
-  let cleanModelId = upstreamModelId;
-  if (cleanModelId === "kling") cleanModelId = "kling-2.6/text-to-video";
-  else if (cleanModelId === "runway") cleanModelId = "runway-gen3/text-to-video";
-  else if (cleanModelId.startsWith("google-veo-3.1-")) {
-    cleanModelId = "veo3";
-  }
+  const cleanBase = base.replace(/\/v1$/, "");
+  const { upstreamModelId: kieModelId, resolution: mappedResolution } = mapVideoModel(upstreamModelId);
 
-  console.log(`[Kie.ai Task Gateway] Mapping platform model "${upstreamModelId}" to Kie.ai parameter "${cleanModelId}"`);
+  console.log(`[Kie.ai Task Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"`);
+
+  // Build input — resolution from body overrides the mapped resolution from model ID
+  const effectiveResolution = body.resolution || mappedResolution;
+
+  const input: Record<string, any> = {
+    prompt: body.prompt,
+    aspect_ratio: body.aspect_ratio || "16:9",
+    duration: body.duration || undefined,
+    image_url: body.image_url || undefined,
+    image_urls: body.image_urls?.length ? body.image_urls : undefined,
+    style: body.style || undefined,
+    lyrics: body.lyrics || undefined,
+    instrumental: body.instrumental !== undefined ? body.instrumental : undefined,
+    mode: body.mode || undefined,
+    resolution: effectiveResolution || undefined,
+  };
+
+  // Remove undefined keys to keep payload clean
+  const cleanInput = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined));
 
   const payload = {
-    model: cleanModelId,
-    input: {
-      prompt: body.prompt,
-      aspect_ratio: body.aspect_ratio || "16:9",
-      duration: body.duration || "5s",
-      image_url: body.image_url || undefined,
-      style: body.style || undefined,
-      lyrics: body.lyrics || undefined,
-      instrumental: body.instrumental !== undefined ? body.instrumental : undefined,
-    },
+    model: kieModelId,
+    input: cleanInput,
   };
 
   const res = await fetch(`${cleanBase}/api/v1/jobs/createTask`, {
@@ -196,7 +361,7 @@ export async function createVideoMusicTask(args: {
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json();
+  const data = await safeJsonParse(res, `Kie.ai createTask[${kieModelId}]`);
 
   if (data?.code && data.code !== 0 && data.code !== 200) {
     throw new Error(`Kie.ai Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
@@ -224,7 +389,7 @@ export async function queryTaskStatus(args: {
 }): Promise<UnifiedTaskStatus> {
   const { provider, apiKey, taskId } = args;
   const base = provider.baseUrl.replace(/\/+$/, "");
-  const cleanBase = base.replace(/\/v1$/, ""); // Ensure root API
+  const cleanBase = base.replace(/\/v1$/, "");
 
   return queryKieTaskStatus({
     cleanBase,
@@ -256,7 +421,7 @@ async function queryKieTaskStatus(args: {
     throw new Error(`Kie.ai task query failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
   }
 
-  const result = await res.json();
+  const result = await safeJsonParse(res, `Kie.ai recordInfo[${taskId}]`);
   const taskData = result?.data;
   if (!taskData) {
     throw new Error(`Kie.ai returned empty job data for task: ${taskId}`);
@@ -280,7 +445,7 @@ async function queryKieTaskStatus(args: {
       const parsed = JSON.parse(taskData.resultJson);
       resultUrls = parsed.resultUrls || [];
     } catch {
-      // Fallback in case resultJson is a direct string or formatted differently
+      // Fallback in case resultJson is a direct string
       if (typeof taskData.resultJson === "string") {
         resultUrls = [taskData.resultJson];
       }
