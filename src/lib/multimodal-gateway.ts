@@ -183,9 +183,18 @@ async function safeJsonParse(res: Response, context: string): Promise<any> {
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error(
-      `${context} returned non-JSON response (HTTP ${res.status}): ${text.slice(0, 300)}`
-    );
+    // Detect HTML error pages (Cloudflare 502, nginx, etc.) and produce a clean message
+    const trimmed = text.trimStart();
+    let hint: string;
+    if (trimmed.startsWith("<")) {
+      if (res.status === 502) hint = "Bad Gateway — Kie.ai is temporarily unreachable. Please try again in a moment.";
+      else if (res.status === 503) hint = "Service Unavailable — Kie.ai is under maintenance. Please try again later.";
+      else if (res.status === 504) hint = "Gateway Timeout — Kie.ai did not respond in time.";
+      else hint = `Kie.ai returned an HTML error page (HTTP ${res.status}). The API may be temporarily down.`;
+    } else {
+      hint = trimmed.slice(0, 200);
+    }
+    throw new Error(`${context}: ${hint}`);
   }
 }
 

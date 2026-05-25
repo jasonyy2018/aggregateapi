@@ -11,6 +11,22 @@
 
 import type { Provider, ProviderProtocol } from "@prisma/client";
 
+/**
+ * Convert a potentially-HTML upstream error body into a clean, one-line hint.
+ * Prevents raw Cloudflare/CDN HTML pages from surfacing to users.
+ */
+function safeErrorHint(rawText: string, status: number): string {
+  const trimmed = rawText.trimStart();
+  if (trimmed.startsWith("<")) {
+    // HTML page (Cloudflare 502, nginx 504, etc.)
+    if (status === 502) return "Bad Gateway — the upstream API server is temporarily unreachable. Please try again in a moment.";
+    if (status === 503) return "Service Unavailable — the upstream API is under maintenance. Please try again later.";
+    if (status === 504) return "Gateway Timeout — the upstream API did not respond in time. Please try again.";
+    return `Upstream returned an HTML error page (HTTP ${status}). The API may be temporarily down.`;
+  }
+  return trimmed.slice(0, 200);
+}
+
 type OpenAIMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content: string | Array<{ type: string; text?: string; image_url?: any }>;
@@ -92,7 +108,16 @@ async function forwardOpenAI({
     return { streaming: true, response: res };
   }
 
-  const data = await res.json();
+  // Safely parse — upstream may return HTML on 502/503 (e.g. Cloudflare error page)
+  const rawText = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    const hint = safeErrorHint(rawText, res.status);
+    throw new Error(`Upstream API error (HTTP ${res.status}): ${hint}`);
+  }
+
   let usage: Usage | undefined;
   if (data?.usage) {
     usage = {
@@ -187,7 +212,15 @@ async function forwardAnthropic({
     };
   }
 
-  const data = await res.json();
+  const rawAnthText = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawAnthText);
+  } catch {
+    const hint = safeErrorHint(rawAnthText, res.status);
+    throw new Error(`Upstream API error (HTTP ${res.status}): ${hint}`);
+  }
+
   if (!res.ok) {
     return {
       streaming: false,
@@ -235,6 +268,7 @@ async function forwardAnthropic({
     usage,
   };
 }
+
 
 function anthropicStreamToOpenAI(
   upstream: ReadableStream<Uint8Array>,
@@ -372,7 +406,16 @@ async function forwardGemini({
     };
   }
 
-  const data = await res.json();
+  // Safely parse — upstream may return HTML on 502/503
+  const rawGemText = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawGemText);
+  } catch {
+    const hint = safeErrorHint(rawGemText, res.status);
+    throw new Error(`Upstream API error (HTTP ${res.status}): ${hint}`);
+  }
+
   if (!res.ok) {
     return {
       streaming: false,
@@ -420,6 +463,7 @@ async function forwardGemini({
     usage,
   };
 }
+
 
 function geminiStreamToOpenAI(
   upstream: ReadableStream<Uint8Array>,
