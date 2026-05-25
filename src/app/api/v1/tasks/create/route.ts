@@ -4,6 +4,7 @@ import { decryptSecret } from "@/lib/crypto";
 import { createVideoMusicTask, type TaskCreateBody } from "@/lib/multimodal-gateway";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // Task creation itself is fast; polling is done client-side
 
 export async function POST(req: Request) {
   const prisma = getPrisma();

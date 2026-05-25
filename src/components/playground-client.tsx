@@ -236,8 +236,10 @@ export function PlaygroundClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to fetch response");
+        const text = await res.text();
+        let errMsg = "Failed to fetch response";
+        try { errMsg = JSON.parse(text)?.error?.message || errMsg; } catch { errMsg = `Server error (HTTP ${res.status})`; }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();
@@ -288,8 +290,10 @@ export function PlaygroundClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || err.details || "Generation failed");
+        const text = await res.text();
+        let errMsg = "Generation failed";
+        try { errMsg = JSON.parse(text)?.error?.message || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();
@@ -338,8 +342,10 @@ export function PlaygroundClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || err.details || "Task creation failed");
+        const text = await res.text();
+        let errMsg = "Task creation failed";
+        try { errMsg = JSON.parse(text)?.error || JSON.parse(text)?.details || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();
@@ -390,8 +396,10 @@ export function PlaygroundClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || err.details || "Task creation failed");
+        const text = await res.text();
+        let errMsg = "Task creation failed";
+        try { errMsg = JSON.parse(text)?.error || JSON.parse(text)?.details || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();

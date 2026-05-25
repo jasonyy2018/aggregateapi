@@ -4,6 +4,7 @@ import { decryptSecret } from "@/lib/crypto";
 import { generateImage, type ImageGenerationBody } from "@/lib/multimodal-gateway";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120; // Image generation polling can take up to 50s
 
 export async function POST(req: Request) {
   const prisma = getPrisma();
