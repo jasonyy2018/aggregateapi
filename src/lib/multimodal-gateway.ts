@@ -37,10 +37,10 @@
  *   grok-imagine-text-to-video-720p     → grok-imagine/text-to-video  (input: resolution=720p)
  *   grok-imagine-image-to-video-480p    → grok-imagine/image-to-video (input: resolution=480p)
  *   grok-imagine-image-to-video-720p    → grok-imagine/image-to-video (input: resolution=720p)
- *   seedance-2.0-480p-no-video-input    → seedance-2.0/text-to-video  (input: resolution=480p)
- *   seedance-2.0-720p-no-video-input    → seedance-2.0/text-to-video  (input: resolution=720p)
- *   seedance-2.0-480p-with-video-input  → seedance-2.0/image-to-video (input: resolution=480p)
- *   seedance-2.0-720p-with-video-input  → seedance-2.0/image-to-video (input: resolution=720p)
+ *   seedance-2.0-480p-no-video-input    → bytedance/seedance-2  (input: resolution=480p)
+ *   seedance-2.0-720p-no-video-input    → bytedance/seedance-2  (input: resolution=720p)
+ *   seedance-2.0-480p-with-video-input  → bytedance/seedance-2  (input: resolution=480p)
+ *   seedance-2.0-720p-with-video-input  → bytedance/seedance-2  (input: resolution=720p)
  *   kling-2.6-motion-control-720p       → kling-2.6/motion-control    (input: resolution=720p)
  *   kling-2.6-motion-control-1080p      → kling-2.6/motion-control    (input: resolution=1080p)
  *   gemini-omni-video-*                 → gemini-omni-video (duration/resolution extracted from ID)
@@ -156,11 +156,12 @@ export function mapVideoModel(platformModelId: string): VideoModelMap {
   if (id === "grok-imagine-image-to-video-480p") return { upstreamModelId: "grok-imagine/image-to-video", resolution: "480p" };
   if (id === "grok-imagine-image-to-video-720p") return { upstreamModelId: "grok-imagine/image-to-video", resolution: "720p" };
 
-  // ── Seedance 2.0 ──
-  if (id === "seedance-2.0-480p-no-video-input")   return { upstreamModelId: "seedance-2.0/text-to-video",  resolution: "480p" };
-  if (id === "seedance-2.0-720p-no-video-input")   return { upstreamModelId: "seedance-2.0/text-to-video",  resolution: "720p" };
-  if (id === "seedance-2.0-480p-with-video-input") return { upstreamModelId: "seedance-2.0/image-to-video", resolution: "480p" };
-  if (id === "seedance-2.0-720p-with-video-input") return { upstreamModelId: "seedance-2.0/image-to-video", resolution: "720p" };
+  // ── Seedance 2.0 (Bytedance) ──
+  // KIE upstream model name is "bytedance/seedance-2"
+  if (id === "seedance-2.0-480p-no-video-input" || id === "bytedance/seedance-2") return { upstreamModelId: "bytedance/seedance-2", resolution: "480p" };
+  if (id === "seedance-2.0-720p-no-video-input")                                    return { upstreamModelId: "bytedance/seedance-2", resolution: "720p" };
+  if (id === "seedance-2.0-480p-with-video-input")                                  return { upstreamModelId: "bytedance/seedance-2", resolution: "480p" };
+  if (id === "seedance-2.0-720p-with-video-input")                                  return { upstreamModelId: "bytedance/seedance-2", resolution: "720p" };
 
   // ── Kling 2.6 Motion Control ──
   if (id === "kling-2.6-motion-control-720p")  return { upstreamModelId: "kling-2.6/motion-control", resolution: "720p" };

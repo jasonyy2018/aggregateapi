@@ -112,9 +112,9 @@ async function forwardOpenAI({
         data = JSON.parse(rawText);
       } catch {
         const hint = safeErrorHint(rawText, res.status);
-        throw new Error(`Upstream API error (HTTP ${res.status}): ${hint}`);
+        throw new Error(`[${base}] model "${upstreamModelId}" returned HTTP ${res.status}: ${hint}`);
       }
-      throw new Error(data?.error?.message || data?.error || `Upstream API error (HTTP ${res.status})`);
+      throw new Error(`[${base}] model "${upstreamModelId}": ${data?.error?.message || data?.error || `HTTP ${res.status}`}`);
     }
     return { streaming: true, response: res };
   }

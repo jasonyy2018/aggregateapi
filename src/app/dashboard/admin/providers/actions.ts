@@ -612,11 +612,6 @@ export async function importProviderModels(providerId: string) {
         { id: "o1-mini", displayName: "o1-mini", contextLength: 128000, costInputPer1k: 0.003, costOutputPer1k: 0.012 },
         { id: "o3-mini", displayName: "o3-mini", contextLength: 200000, costInputPer1k: 0.0011, costOutputPer1k: 0.0044 },
 
-        // Anthropic
-        { id: "claude-3-5-sonnet", displayName: "Claude 3.5 Sonnet", contextLength: 200000, costInputPer1k: 0.003, costOutputPer1k: 0.015 },
-        { id: "claude-3-5-haiku", displayName: "Claude 3.5 Haiku", contextLength: 200000, costInputPer1k: 0.0008, costOutputPer1k: 0.004 },
-        { id: "claude-3-opus", displayName: "Claude 3 Opus", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075 },
-
         // DeepSeek
         { id: "deepseek-chat", displayName: "DeepSeek V3", contextLength: 64000, costInputPer1k: 0.00014, costOutputPer1k: 0.00028 },
         { id: "deepseek-r1", displayName: "DeepSeek R1", contextLength: 64000, costInputPer1k: 0.00055, costOutputPer1k: 0.00219 },
@@ -626,11 +621,6 @@ export async function importProviderModels(providerId: string) {
         { id: "gemini-1.5-flash", displayName: "Gemini 1.5 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
         { id: "gemini-2.0-flash", displayName: "Gemini 2.0 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
         { id: "gemini-2.0-flash-thinking", displayName: "Gemini 2.0 Flash Thinking", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
-
-        // Advanced Next-Gen LLMs (Kie.ai)
-        { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus", contextLength: 200000, costInputPer1k: 0.001425, costOutputPer1k: 0.007150, inputPricePer1k: 0.001425, outputPricePer1k: 0.007150 },
-        { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet", contextLength: 200000, costInputPer1k: 0.000850, costOutputPer1k: 0.004275, inputPricePer1k: 0.000850, outputPricePer1k: 0.004275 },
-        { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat", contextLength: 200000, costInputPer1k: 0.001400, costOutputPer1k: 0.008400, inputPricePer1k: 0.001400, outputPricePer1k: 0.008400 },
 
         // Multimodal Models (Kie.ai Native)
         { id: "flux-schnell", displayName: "Flux Schnell", capabilities: ["image"], costInputPer1k: 0.05 },
@@ -648,7 +638,7 @@ export async function importProviderModels(providerId: string) {
         { id: "google-nano-banana-pro-1-2k", displayName: "Nano Banana Pro 1/2K", capabilities: ["image"], costInputPer1k: 0.09 },
         { id: "google-nano-banana-pro-4k", displayName: "Nano Banana Pro 4K", capabilities: ["image"], costInputPer1k: 0.12 },
 
-        // Seedance 2.0 Video series (Kie.ai Video)
+        // Seedance 2.0 Video series (Bytedance, Kie.ai Video)
         { id: "seedance-2.0-720p-no-video-input", displayName: "Seedance 2.0 720p (Text-to-Video)", capabilities: ["video"], costInputPer1k: 0.205 },
         { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (Image-to-Video)", capabilities: ["video"], costInputPer1k: 0.125 },
         { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (Text-to-Video)", capabilities: ["video"], costInputPer1k: 0.095 },

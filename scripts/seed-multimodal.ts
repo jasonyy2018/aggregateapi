@@ -30,11 +30,6 @@ const multimodalModels = [
   { id: "runway", displayName: "Runway Gen-3", capabilities: ["video"], cost: 0.30, price: 0.30 },
   { id: "suno", displayName: "Suno AI Music v3.5", capabilities: ["music"], cost: 0.15, price: 0.15 },
 
-  // Next-Gen LLMs
-  { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus", capabilities: [], cost: 0.001425, price: 0.001425, costOutput: 0.007150, priceOutput: 0.007150 },
-  { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet", capabilities: [], cost: 0.000850, price: 0.000850, costOutput: 0.004275, priceOutput: 0.004275 },
-  { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat", capabilities: [], cost: 0.001400, price: 0.001400, costOutput: 0.008400, priceOutput: 0.008400 },
-
   // Google Nano Banana series (Image)
   { id: "google-nano-banana-2-4k", displayName: "Nano Banana 2 4K", capabilities: ["image"], cost: 0.09, price: 0.09 },
   { id: "google-nano-banana-2-2k", displayName: "Nano Banana 2 2K", capabilities: ["image"], cost: 0.06, price: 0.06 },
@@ -42,7 +37,7 @@ const multimodalModels = [
   { id: "google-nano-banana-pro-1-2k", displayName: "Nano Banana Pro 1/2K", capabilities: ["image"], cost: 0.09, price: 0.09 },
   { id: "google-nano-banana-pro-4k", displayName: "Nano Banana Pro 4K", capabilities: ["image"], cost: 0.12, price: 0.12 },
 
-  // Seedance 2.0 Video series (Video)
+  // Seedance 2.0 Video series (Video, Bytedance)
   { id: "seedance-2.0-720p-no-video-input", displayName: "Seedance 2.0 720p (Text-to-Video)", capabilities: ["video"], cost: 0.205, price: 0.205 },
   { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (Image-to-Video)", capabilities: ["video"], cost: 0.125, price: 0.125 },
   { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (Text-to-Video)", capabilities: ["video"], cost: 0.095, price: 0.095 },

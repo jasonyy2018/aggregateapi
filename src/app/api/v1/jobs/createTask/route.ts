@@ -59,6 +59,16 @@ export async function POST(req: Request) {
       } else {
         dbModelId = "grok-imagine-image-to-video-480p";
       }
+    } else if (requestedModel === "bytedance/seedance-2") {
+      const res = String(body.input?.resolution || "720p").toLowerCase();
+      const hasFirstFrame = body.input?.first_frame_url || body.input?.last_frame_url || body.input?.reference_image_urls?.length;
+      if (res === "1080p") {
+        dbModelId = hasFirstFrame ? "seedance-2.0-720p-with-video-input" : "seedance-2.0-720p-no-video-input";
+      } else if (res === "720p") {
+        dbModelId = hasFirstFrame ? "seedance-2.0-720p-with-video-input" : "seedance-2.0-720p-no-video-input";
+      } else {
+        dbModelId = hasFirstFrame ? "seedance-2.0-480p-with-video-input" : "seedance-2.0-480p-no-video-input";
+      }
     }
 
     const resolved = await resolveModel(prisma, dbModelId);
