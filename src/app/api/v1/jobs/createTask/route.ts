@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
+import { mapImageModel, mapVideoModel } from "@/lib/multimodal-gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -83,8 +84,24 @@ export async function POST(req: Request) {
     const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
     const upstreamUrl = `${cleanBase}/api/v1/jobs/createTask`;
 
+    // Determine the correct upstream model ID
+    // If the resolved model has a known mapping, use it; otherwise fall back to the raw name
+    let upstreamModel = requestedModel;
+    // Try image model mapping (covers flux, midjourney, nano-banana, etc.)
+    const mappedImage = mapImageModel(upstreamModel);
+    if (mappedImage.upstreamModelId !== upstreamModel) {
+      upstreamModel = mappedImage.upstreamModelId;
+    }
+    // Try video model mapping (covers kling, runway, suno, etc.)
+    if (upstreamModel === requestedModel) {
+      const mappedVideo = mapVideoModel(upstreamModel);
+      if (mappedVideo.upstreamModelId !== upstreamModel) {
+        upstreamModel = mappedVideo.upstreamModelId;
+      }
+    }
+
     const upstreamPayload = {
-      model: requestedModel, // Keep standard model name for upstream compatibility
+      model: upstreamModel,
       callBackUrl: body.callBackUrl,
       input: body.input,
     };

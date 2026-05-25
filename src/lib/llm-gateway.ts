@@ -105,6 +105,17 @@ async function forwardOpenAI({
 
   if (payload.stream) {
     // Pass-through stream (upstream already emits OpenAI SSE format)
+    if (!res.ok) {
+      const rawText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        const hint = safeErrorHint(rawText, res.status);
+        throw new Error(`Upstream API error (HTTP ${res.status}): ${hint}`);
+      }
+      throw new Error(data?.error?.message || data?.error || `Upstream API error (HTTP ${res.status})`);
+    }
     return { streaming: true, response: res };
   }
 
@@ -195,8 +206,14 @@ async function forwardAnthropic({
 
   if (body.stream) {
     // Translate Anthropic SSE into OpenAI Chat SSE on the fly.
-    if (!res.ok || !res.body) {
-      return { streaming: true, response: res };
+    if (!res.ok) {
+      const rawText = await res.text();
+      let data: any;
+      try { data = JSON.parse(rawText); } catch { /* ignore */ }
+      throw new Error(data?.error?.message || data?.error?.type || `Upstream API error (HTTP ${res.status})`);
+    }
+    if (!res.body) {
+      throw new Error("Upstream returned an empty body");
     }
     const stream = anthropicStreamToOpenAI(res.body, upstreamModelId);
     return {
@@ -389,8 +406,14 @@ async function forwardGemini({
   });
 
   if (body.stream) {
-    if (!res.ok || !res.body) {
-      return { streaming: true, response: res };
+    if (!res.ok) {
+      const rawText = await res.text();
+      let data: any;
+      try { data = JSON.parse(rawText); } catch { /* ignore */ }
+      throw new Error(data?.error?.message || data?.error || `Upstream API error (HTTP ${res.status})`);
+    }
+    if (!res.body) {
+      throw new Error("Upstream returned an empty body");
     }
     const stream = geminiStreamToOpenAI(res.body, upstreamModelId);
     return {

@@ -92,16 +92,16 @@ type ImageModelMap = {
 };
 
 /** Maps a platform DB modelId to the correct Kie.ai upstream model ID + input params for image generation. */
-function mapImageModel(platformModelId: string): ImageModelMap {
+export function mapImageModel(platformModelId: string): ImageModelMap {
   const id = platformModelId;
 
   // ── Flux ──
   if (id === "flux-schnell") return { upstreamModelId: "flux-schnell", inputStyle: "wh" };
-  if (id === "flux-dev") return { upstreamModelId: "flux-kontext-dev", inputStyle: "wh" };
-  if (id === "flux-pro") return { upstreamModelId: "flux-kontext-pro", inputStyle: "wh" };
+  if (id === "flux-dev" || id === "flux-kontext-dev") return { upstreamModelId: "flux-kontext-dev", inputStyle: "wh" };
+  if (id === "flux-pro" || id === "flux-kontext-pro") return { upstreamModelId: "flux-kontext-pro", inputStyle: "wh" };
 
   // ── Midjourney ──
-  if (id === "midjourney") return { upstreamModelId: "mj_txt2img", inputStyle: "wh" };
+  if (id === "midjourney" || id === "mj_txt2img") return { upstreamModelId: "mj_txt2img", inputStyle: "wh" };
 
   // ── Google Nano Banana 2 ──
   if (id === "google-nano-banana-2-1k") return { upstreamModelId: "nano-banana-2", inputStyle: "resolution", resolution: "1K" };
@@ -139,7 +139,7 @@ type VideoModelMap = {
 };
 
 /** Maps a platform DB modelId to the correct Kie.ai upstream model ID + optional resolution for video/music tasks. */
-function mapVideoModel(platformModelId: string): VideoModelMap {
+export function mapVideoModel(platformModelId: string): VideoModelMap {
   const id = platformModelId;
 
   // ── Legacy ──

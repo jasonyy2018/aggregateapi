@@ -29,6 +29,16 @@ export async function POST(req: Request) {
 
     // 2. Parse body
     const body = (await req.json()) as ImageGenerationBody;
+    
+    // Sanitize any buggy "[undefined]" string inputs sent by clients (e.g. Cherry Studio)
+    if (body && typeof body === "object") {
+      for (const key in body) {
+        if ((body as any)[key] === "[undefined]") {
+          delete (body as any)[key];
+        }
+      }
+    }
+
     const requestedModel = body?.model;
     if (!requestedModel) {
       return openaiError("Missing 'model' field", "invalid_request_error", 400);

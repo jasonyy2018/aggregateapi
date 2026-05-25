@@ -11,7 +11,16 @@ export async function createApiKey(name: string) {
     if (!session?.user?.id) throw new Error("Unauthorized");
 
     const prisma = getPrisma();
-    
+
+    // Verify the user still exists in the database (handles DB resets)
+    const userExists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true },
+    });
+    if (!userExists) {
+      return { error: "Your session is invalid. Please sign out and sign back in." };
+    }
+
     // Generate a random key: sk-aggr- + 32 bytes of hex
     const key = `sk-aggr-${randomBytes(24).toString("hex")}`;
 

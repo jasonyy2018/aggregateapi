@@ -606,107 +606,107 @@ export async function importProviderModels(providerId: string) {
         // Pre-configured model list for Kie.ai
         upstreamModels = [
         // OpenAI
-        { id: "gpt-4o", displayName: "GPT-4o (Kie)", contextLength: 128000, costInputPer1k: 0.0025, costOutputPer1k: 0.010 },
-        { id: "gpt-4o-mini", displayName: "GPT-4o-mini (Kie)", contextLength: 128000, costInputPer1k: 0.00015, costOutputPer1k: 0.0006 },
-        { id: "o1", displayName: "OpenAI o1 (Kie)", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.060 },
-        { id: "o1-mini", displayName: "OpenAI o1-mini (Kie)", contextLength: 128000, costInputPer1k: 0.003, costOutputPer1k: 0.012 },
-        { id: "o3-mini", displayName: "OpenAI o3-mini (Kie)", contextLength: 200000, costInputPer1k: 0.0011, costOutputPer1k: 0.0044 },
+        { id: "gpt-4o", displayName: "GPT-4o", contextLength: 128000, costInputPer1k: 0.0025, costOutputPer1k: 0.010 },
+        { id: "gpt-4o-mini", displayName: "GPT-4o-mini", contextLength: 128000, costInputPer1k: 0.00015, costOutputPer1k: 0.0006 },
+        { id: "o1", displayName: "o1", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.060 },
+        { id: "o1-mini", displayName: "o1-mini", contextLength: 128000, costInputPer1k: 0.003, costOutputPer1k: 0.012 },
+        { id: "o3-mini", displayName: "o3-mini", contextLength: 200000, costInputPer1k: 0.0011, costOutputPer1k: 0.0044 },
 
         // Anthropic
-        { id: "claude-3-5-sonnet", displayName: "Claude 3.5 Sonnet (Kie)", contextLength: 200000, costInputPer1k: 0.003, costOutputPer1k: 0.015 },
-        { id: "claude-3-5-haiku", displayName: "Claude 3.5 Haiku (Kie)", contextLength: 200000, costInputPer1k: 0.0008, costOutputPer1k: 0.004 },
-        { id: "claude-3-opus", displayName: "Claude 3 Opus (Kie)", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075 },
+        { id: "claude-3-5-sonnet", displayName: "Claude 3.5 Sonnet", contextLength: 200000, costInputPer1k: 0.003, costOutputPer1k: 0.015 },
+        { id: "claude-3-5-haiku", displayName: "Claude 3.5 Haiku", contextLength: 200000, costInputPer1k: 0.0008, costOutputPer1k: 0.004 },
+        { id: "claude-3-opus", displayName: "Claude 3 Opus", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075 },
 
         // DeepSeek
-        { id: "deepseek-chat", displayName: "DeepSeek V3 (Kie)", contextLength: 64000, costInputPer1k: 0.00014, costOutputPer1k: 0.00028 },
-        { id: "deepseek-r1", displayName: "DeepSeek R1 (Kie)", contextLength: 64000, costInputPer1k: 0.00055, costOutputPer1k: 0.00219 },
+        { id: "deepseek-chat", displayName: "DeepSeek V3", contextLength: 64000, costInputPer1k: 0.00014, costOutputPer1k: 0.00028 },
+        { id: "deepseek-r1", displayName: "DeepSeek R1", contextLength: 64000, costInputPer1k: 0.00055, costOutputPer1k: 0.00219 },
 
         // Google Gemini
-        { id: "gemini-1.5-pro", displayName: "Gemini 1.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
-        { id: "gemini-1.5-flash", displayName: "Gemini 1.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
-        { id: "gemini-2.0-flash", displayName: "Gemini 2.0 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
-        { id: "gemini-2.0-flash-thinking", displayName: "Gemini 2.0 Flash Thinking (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+        { id: "gemini-1.5-pro", displayName: "Gemini 1.5 Pro", contextLength: 2097152, costInputPer1k: 0.00125, costOutputPer1k: 0.005 },
+        { id: "gemini-1.5-flash", displayName: "Gemini 1.5 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+        { id: "gemini-2.0-flash", displayName: "Gemini 2.0 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
+        { id: "gemini-2.0-flash-thinking", displayName: "Gemini 2.0 Flash Thinking", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.0003 },
 
         // Advanced Next-Gen LLMs (Kie.ai)
-        { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus (Kie)", contextLength: 200000, costInputPer1k: 0.001425, costOutputPer1k: 0.007150, inputPricePer1k: 0.001425, outputPricePer1k: 0.007150 },
-        { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet (Kie)", contextLength: 200000, costInputPer1k: 0.000850, costOutputPer1k: 0.004275, inputPricePer1k: 0.000850, outputPricePer1k: 0.004275 },
-        { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat (Kie)", contextLength: 200000, costInputPer1k: 0.001400, costOutputPer1k: 0.008400, inputPricePer1k: 0.001400, outputPricePer1k: 0.008400 },
+        { id: "claude-opus-4.7", displayName: "Claude 4.7 Opus", contextLength: 200000, costInputPer1k: 0.001425, costOutputPer1k: 0.007150, inputPricePer1k: 0.001425, outputPricePer1k: 0.007150 },
+        { id: "claude-sonnet-4.6", displayName: "Claude 4.6 Sonnet", contextLength: 200000, costInputPer1k: 0.000850, costOutputPer1k: 0.004275, inputPricePer1k: 0.000850, outputPricePer1k: 0.004275 },
+        { id: "gpt-5.5-chat", displayName: "GPT-5.5 Chat", contextLength: 200000, costInputPer1k: 0.001400, costOutputPer1k: 0.008400, inputPricePer1k: 0.001400, outputPricePer1k: 0.008400 },
 
         // Multimodal Models (Kie.ai Native)
-        { id: "flux-schnell", displayName: "Flux Schnell (Kie)", capabilities: ["image"], costInputPer1k: 0.05 },
-        { id: "flux-kontext-dev", displayName: "Flux Dev (Kie)", capabilities: ["image"], costInputPer1k: 0.10 },
-        { id: "flux-kontext-pro", displayName: "Flux Pro (Kie)", capabilities: ["image"], costInputPer1k: 0.15 },
-        { id: "mj_txt2img", displayName: "Midjourney v6 (Kie)", capabilities: ["image"], costInputPer1k: 0.20 },
-        { id: "kling-2.6/text-to-video", displayName: "Kling Video (Kie)", capabilities: ["video"], costInputPer1k: 0.25 },
-        { id: "runway-gen3/text-to-video", displayName: "Runway Gen-3 (Kie)", capabilities: ["video"], costInputPer1k: 0.30 },
-        { id: "suno", displayName: "Suno AI Music v3.5 (Kie)", capabilities: ["music"], costInputPer1k: 0.15 },
+        { id: "flux-schnell", displayName: "Flux Schnell", capabilities: ["image"], costInputPer1k: 0.05 },
+        { id: "flux-dev", displayName: "Flux Dev", capabilities: ["image"], costInputPer1k: 0.10 },
+        { id: "flux-pro", displayName: "Flux Pro", capabilities: ["image"], costInputPer1k: 0.15 },
+        { id: "midjourney", displayName: "Midjourney v6", capabilities: ["image"], costInputPer1k: 0.20 },
+        { id: "kling", displayName: "Kling Video", capabilities: ["video"], costInputPer1k: 0.25 },
+        { id: "runway", displayName: "Runway Gen-3", capabilities: ["video"], costInputPer1k: 0.30 },
+        { id: "suno", displayName: "Suno AI Music v3.5", capabilities: ["music"], costInputPer1k: 0.15 },
 
         // Google Nano Banana series (Kie.ai Image)
-        { id: "google-nano-banana-2-4k", displayName: "Google Nano Banana 2 4K (Kie)", capabilities: ["image"], costInputPer1k: 0.09 },
-        { id: "google-nano-banana-2-2k", displayName: "Google Nano Banana 2 2K (Kie)", capabilities: ["image"], costInputPer1k: 0.06 },
-        { id: "google-nano-banana-2-1k", displayName: "Google Nano Banana 2 1K (Kie)", capabilities: ["image"], costInputPer1k: 0.04 },
-        { id: "google-nano-banana-pro-1-2k", displayName: "Google Nano Banana Pro 1/2K (Kie)", capabilities: ["image"], costInputPer1k: 0.09 },
-        { id: "google-nano-banana-pro-4k", displayName: "Google Nano Banana Pro 4K (Kie)", capabilities: ["image"], costInputPer1k: 0.12 },
+        { id: "google-nano-banana-2-4k", displayName: "Nano Banana 2 4K", capabilities: ["image"], costInputPer1k: 0.09 },
+        { id: "google-nano-banana-2-2k", displayName: "Nano Banana 2 2K", capabilities: ["image"], costInputPer1k: 0.06 },
+        { id: "google-nano-banana-2-1k", displayName: "Nano Banana 2 1K", capabilities: ["image"], costInputPer1k: 0.04 },
+        { id: "google-nano-banana-pro-1-2k", displayName: "Nano Banana Pro 1/2K", capabilities: ["image"], costInputPer1k: 0.09 },
+        { id: "google-nano-banana-pro-4k", displayName: "Nano Banana Pro 4K", capabilities: ["image"], costInputPer1k: 0.12 },
 
         // Seedance 2.0 Video series (Kie.ai Video)
-        { id: "seedance-2.0-720p-no-video-input", displayName: "Seedance 2.0 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.205 },
-        { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.125 },
-        { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.095 },
-        { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.057 },
+        { id: "seedance-2.0-720p-no-video-input", displayName: "Seedance 2.0 720p (Text-to-Video)", capabilities: ["video"], costInputPer1k: 0.205 },
+        { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (Image-to-Video)", capabilities: ["video"], costInputPer1k: 0.125 },
+        { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (Text-to-Video)", capabilities: ["video"], costInputPer1k: 0.095 },
+        { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (Image-to-Video)", capabilities: ["video"], costInputPer1k: 0.057 },
 
         // Google Veo 3.1 series (Kie.ai Video)
-        { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Google Veo 3.1 Text-to-Video 1080p (Kie)", capabilities: ["video"], costInputPer1k: 1.28 },
-        { id: "google-veo-3.1-image-to-video-quality-1080p", displayName: "Google Veo 3.1 Image-to-Video 1080p (Kie)", capabilities: ["video"], costInputPer1k: 1.28 },
-        { id: "google-veo-3.1-text-to-video-quality-4k", displayName: "Google Veo 3.1 Text-to-Video 4K (Kie)", capabilities: ["video"], costInputPer1k: 1.85 },
-        { id: "google-veo-3.1-image-to-video-quality-4k", displayName: "Google Veo 3.1 Image-to-Video 4K (Kie)", capabilities: ["video"], costInputPer1k: 1.85 },
+        { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Veo 3.1 Text-to-Video 1080p", capabilities: ["video"], costInputPer1k: 1.28 },
+        { id: "google-veo-3.1-image-to-video-quality-1080p", displayName: "Veo 3.1 Image-to-Video 1080p", capabilities: ["video"], costInputPer1k: 1.28 },
+        { id: "google-veo-3.1-text-to-video-quality-4k", displayName: "Veo 3.1 Text-to-Video 4K", capabilities: ["video"], costInputPer1k: 1.85 },
+        { id: "google-veo-3.1-image-to-video-quality-4k", displayName: "Veo 3.1 Image-to-Video 4K", capabilities: ["video"], costInputPer1k: 1.85 },
 
         // Grok Imagine Video series (Kie.ai Video)
-        { id: "grok-imagine-image-to-video-720p", displayName: "Grok Imagine Image-to-Video 720p (Kie)", capabilities: ["video"], costInputPer1k: 0.015 },
-        { id: "grok-imagine-text-to-video-720p", displayName: "Grok Imagine Text-to-Video 720p (Kie)", capabilities: ["video"], costInputPer1k: 0.015 },
-        { id: "grok-imagine-image-to-video-480p", displayName: "Grok Imagine Image-to-Video 480p (Kie)", capabilities: ["video"], costInputPer1k: 0.008 },
-        { id: "grok-imagine-text-to-video-480p", displayName: "Grok Imagine Text-to-Video 480p (Kie)", capabilities: ["video"], costInputPer1k: 0.008 },
+        { id: "grok-imagine-image-to-video-720p", displayName: "Grok Imagine Image-to-Video 720p", capabilities: ["video"], costInputPer1k: 0.015 },
+        { id: "grok-imagine-text-to-video-720p", displayName: "Grok Imagine Text-to-Video 720p", capabilities: ["video"], costInputPer1k: 0.015 },
+        { id: "grok-imagine-image-to-video-480p", displayName: "Grok Imagine Image-to-Video 480p", capabilities: ["video"], costInputPer1k: 0.008 },
+        { id: "grok-imagine-text-to-video-480p", displayName: "Grok Imagine Text-to-Video 480p", capabilities: ["video"], costInputPer1k: 0.008 },
 
         // Gemini 2.5 Flash / Pro (Direct Overrides)
-        { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash (Kie)", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.000300, inputPricePer1k: 0.000090, outputPricePer1k: 0.000750 },
-        { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro (Kie)", contextLength: 2097152, costInputPer1k: 0.000300, costOutputPer1k: 0.002400, inputPricePer1k: 0.000380, outputPricePer1k: 0.003000 },
+        { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.000300, inputPricePer1k: 0.000090, outputPricePer1k: 0.000750 },
+        { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro", contextLength: 2097152, costInputPer1k: 0.000300, costOutputPer1k: 0.002400, inputPricePer1k: 0.000380, outputPricePer1k: 0.003000 },
 
         // Topaz Image Upscaler
-        { id: "topaz-image-upscaler-8k", displayName: "Topaz Image Upscaler 8K (Kie)", capabilities: ["image"], costInputPer1k: 0.16, inputPricePer1k: 0.20 },
-        { id: "topaz-image-upscaler-4k", displayName: "Topaz Image Upscaler 4K (Kie)", capabilities: ["image"], costInputPer1k: 0.08, inputPricePer1k: 0.10 },
-        { id: "topaz-image-upscaler-2k", displayName: "Topaz Image Upscaler 2K (Kie)", capabilities: ["image"], costInputPer1k: 0.04, inputPricePer1k: 0.05 },
+        { id: "topaz-image-upscaler-8k", displayName: "Topaz Image Upscaler 8K", capabilities: ["image"], costInputPer1k: 0.16, inputPricePer1k: 0.20 },
+        { id: "topaz-image-upscaler-4k", displayName: "Topaz Image Upscaler 4K", capabilities: ["image"], costInputPer1k: 0.08, inputPricePer1k: 0.10 },
+        { id: "topaz-image-upscaler-2k", displayName: "Topaz Image Upscaler 2K", capabilities: ["image"], costInputPer1k: 0.04, inputPricePer1k: 0.05 },
 
         // Kling 2.6 Motion Control (billed per request/video flat-rate based on average duration)
-        { id: "kling-2.6-motion-control-1080p", displayName: "Kling 2.6 Motion Control 1080P (Kie)", capabilities: ["video"], costInputPer1k: 0.36, inputPricePer1k: 0.45 },
-        { id: "kling-2.6-motion-control-720p", displayName: "Kling 2.6 Motion Control 720P (Kie)", capabilities: ["video"], costInputPer1k: 0.22, inputPricePer1k: 0.275 },
+        { id: "kling-2.6-motion-control-1080p", displayName: "Kling 2.6 Motion Control 1080P", capabilities: ["video"], costInputPer1k: 0.36, inputPricePer1k: 0.45 },
+        { id: "kling-2.6-motion-control-720p", displayName: "Kling 2.6 Motion Control 720P", capabilities: ["video"], costInputPer1k: 0.22, inputPricePer1k: 0.275 },
 
         // GPT Image 1.5
-        { id: "gpt-image-1.5-image-to-image-high", displayName: "GPT Image 1.5 Image-to-Image High (Kie)", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
-        { id: "gpt-image-1.5-image-to-image-medium", displayName: "GPT Image 1.5 Image-to-Image Medium (Kie)", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
-        { id: "gpt-image-1.5-text-to-image-high", displayName: "GPT Image 1.5 Text-to-Image High (Kie)", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
-        { id: "gpt-image-1.5-text-to-image-medium", displayName: "GPT Image 1.5 Text-to-Image Medium (Kie)", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
+        { id: "gpt-image-1.5-image-to-image-high", displayName: "GPT Image 1.5 Image-to-Image High", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
+        { id: "gpt-image-1.5-image-to-image-medium", displayName: "GPT Image 1.5 Image-to-Image Medium", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
+        { id: "gpt-image-1.5-text-to-image-high", displayName: "GPT Image 1.5 Text-to-Image High", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
+        { id: "gpt-image-1.5-text-to-image-medium", displayName: "GPT Image 1.5 Text-to-Image Medium", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
 
         // GPT Image 2
-        { id: "gpt-image-2", displayName: "GPT Image 2 (Kie)", capabilities: ["image"], costInputPer1k: 0.024, inputPricePer1k: 0.03 },
+        { id: "gpt-image-2", displayName: "GPT Image 2", capabilities: ["image"], costInputPer1k: 0.024, inputPricePer1k: 0.03 },
 
         // Google Imagen4
-        { id: "google-imagen4", displayName: "Google Imagen4 (Kie)", capabilities: ["image"], costInputPer1k: 0.032, inputPricePer1k: 0.04 },
+        { id: "google-imagen4", displayName: "Imagen 4", capabilities: ["image"], costInputPer1k: 0.032, inputPricePer1k: 0.04 },
 
         // Gemini Omni Video series (billed per request flat-rate)
-        { id: "gemini-omni-video-6s-4k-no-video-input", displayName: "Gemini Omni Video 6s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
-        { id: "gemini-omni-video-4k-with-video-input", displayName: "Gemini Omni Video 4K (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.50, inputPricePer1k: 1.80 },
-        { id: "gemini-omni-video-1080p-with-video-input", displayName: "Gemini Omni Video 1080p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
-        { id: "gemini-omni-video-720p-with-video-input", displayName: "Gemini Omni Video 720p (With Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
-        { id: "gemini-omni-video-10s-4k-no-video-input", displayName: "Gemini Omni Video 10s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.25, inputPricePer1k: 1.50 },
-        { id: "gemini-omni-video-8s-4k-no-video-input", displayName: "Gemini Omni Video 8s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 1.125, inputPricePer1k: 1.35 },
-        { id: "gemini-omni-video-4s-4k-no-video-input", displayName: "Gemini Omni Video 4s 4K (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.875, inputPricePer1k: 1.05 },
-        { id: "gemini-omni-video-10s-1080p-no-video-input", displayName: "Gemini Omni Video 10s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.75, inputPricePer1k: 0.90 },
-        { id: "gemini-omni-video-8s-1080p-no-video-input", displayName: "Gemini Omni Video 8s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
-        { id: "gemini-omni-video-6s-1080p-no-video-input", displayName: "Gemini Omni Video 6s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
-        { id: "gemini-omni-video-4s-1080p-no-video-input", displayName: "Gemini Omni Video 4s 1080p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
-        { id: "gemini-omni-video-10s-720p-no-video-input", displayName: "Gemini Omni Video 10s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.75, inputPricePer1k: 0.90 },
-        { id: "gemini-omni-video-8s-720p-no-video-input", displayName: "Gemini Omni Video 8s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
-        { id: "gemini-omni-video-6s-720p-no-video-input", displayName: "Gemini Omni Video 6s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
-        { id: "gemini-omni-video-4s-720p-no-video-input", displayName: "Gemini Omni Video 4s 720p (No Video Input) (Kie)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
+        { id: "gemini-omni-video-6s-4k-no-video-input", displayName: "Gemini Omni Video 6s 4K (No Video Input)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
+        { id: "gemini-omni-video-4k-with-video-input", displayName: "Gemini Omni Video 4K (With Video Input)", capabilities: ["video"], costInputPer1k: 1.50, inputPricePer1k: 1.80 },
+        { id: "gemini-omni-video-1080p-with-video-input", displayName: "Gemini Omni Video 1080p (With Video Input)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
+        { id: "gemini-omni-video-720p-with-video-input", displayName: "Gemini Omni Video 720p (With Video Input)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
+        { id: "gemini-omni-video-10s-4k-no-video-input", displayName: "Gemini Omni Video 10s 4K (No Video Input)", capabilities: ["video"], costInputPer1k: 1.25, inputPricePer1k: 1.50 },
+        { id: "gemini-omni-video-8s-4k-no-video-input", displayName: "Gemini Omni Video 8s 4K (No Video Input)", capabilities: ["video"], costInputPer1k: 1.125, inputPricePer1k: 1.35 },
+        { id: "gemini-omni-video-4s-4k-no-video-input", displayName: "Gemini Omni Video 4s 4K (No Video Input)", capabilities: ["video"], costInputPer1k: 0.875, inputPricePer1k: 1.05 },
+        { id: "gemini-omni-video-10s-1080p-no-video-input", displayName: "Gemini Omni Video 10s 1080p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.75, inputPricePer1k: 0.90 },
+        { id: "gemini-omni-video-8s-1080p-no-video-input", displayName: "Gemini Omni Video 8s 1080p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
+        { id: "gemini-omni-video-6s-1080p-no-video-input", displayName: "Gemini Omni Video 6s 1080p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
+        { id: "gemini-omni-video-4s-1080p-no-video-input", displayName: "Gemini Omni Video 4s 1080p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
+        { id: "gemini-omni-video-10s-720p-no-video-input", displayName: "Gemini Omni Video 10s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.75, inputPricePer1k: 0.90 },
+        { id: "gemini-omni-video-8s-720p-no-video-input", displayName: "Gemini Omni Video 8s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
+        { id: "gemini-omni-video-6s-720p-no-video-input", displayName: "Gemini Omni Video 6s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
+        { id: "gemini-omni-video-4s-720p-no-video-input", displayName: "Gemini Omni Video 4s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
       ];
     }
   } else if (p.protocol === "OPENAI") {
