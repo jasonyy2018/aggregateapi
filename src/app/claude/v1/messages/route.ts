@@ -89,17 +89,20 @@ export async function POST(req: Request) {
     const outputEstimate = stream ? Math.min(body.max_tokens ?? 1024, 2048) : 512;
     const estimatedCost = ((promptEstimate / 1000) * inputPrice + (outputEstimate / 1000) * outputPrice) * discountRate;
 
-    if (user.balance < estimatedCost) {
+    if (!isAdmin && user.balance < estimatedCost) {
       return anthropicError("Insufficient balance for this generation", "insufficient_balance", 402);
     }
 
-    // 5. Proxy call to Kie.ai
+    // 5. Proxy call to upstream (KIE or other Anthropic-compatible provider)
     const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
     const upstreamUrl = `${cleanBase}/claude/v1/messages`;
 
+    // KIE uses Bearer token auth (per their OpenAPI spec), while standard Anthropic uses x-api-key.
+    // We send both to be compatible with both KIE and native Anthropic endpoints.
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "x-api-key": upstreamKey,
+      "Authorization": `Bearer ${upstreamKey}`,  // KIE style
+      "x-api-key": upstreamKey,                  // Anthropic native style
       "anthropic-version": "2023-06-01",
     };
     
@@ -107,9 +110,11 @@ export async function POST(req: Request) {
     const extraHeaders = (provider.extraHeaders as Record<string, string> | null) ?? {};
     Object.assign(headers, extraHeaders);
 
+    // Strip platform-internal fields before forwarding
+    const { thinkingFlag: _thinkingFlag, ...bodyToSend } = body as any;
     const payload = {
-      ...body,
-      model: model.modelId, // E.g. "claude-opus-4.7"
+      ...bodyToSend,
+      model: model.modelId,
     };
 
     const res = await fetch(upstreamUrl, {

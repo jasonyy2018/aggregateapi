@@ -714,6 +714,14 @@ export async function importProviderModels(providerId: string) {
         { id: "gemini-omni-video-8s-720p-no-video-input", displayName: "Gemini Omni Video 8s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.625, inputPricePer1k: 0.75 },
         { id: "gemini-omni-video-6s-720p-no-video-input", displayName: "Gemini Omni Video 6s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.50, inputPricePer1k: 0.60 },
         { id: "gemini-omni-video-4s-720p-no-video-input", displayName: "Gemini Omni Video 4s 720p (No Video Input)", capabilities: ["video"], costInputPer1k: 0.375, inputPricePer1k: 0.45 },
+
+        // ── Claude Models (via KIE /claude/v1/messages endpoint) ──
+        // These are accessed through /claude/v1/messages (Anthropic-native format), NOT /v1/chat/completions.
+        // Clients: use https://aapi.togomol.com/claude/v1/messages with x-api-key or Bearer auth.
+        { id: "claude-sonnet-4-6", displayName: "Claude Sonnet 4.6", contextLength: 200000, costInputPer1k: 0.003, costOutputPer1k: 0.015, inputPricePer1k: 0.004, outputPricePer1k: 0.019 },
+        { id: "claude-opus-4-5", displayName: "Claude Opus 4.5", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075, inputPricePer1k: 0.019, outputPricePer1k: 0.094 },
+        { id: "claude-opus-4.7", displayName: "Claude Opus 4.7", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075, inputPricePer1k: 0.019, outputPricePer1k: 0.094 },
+        { id: "claude-haiku-3-5", displayName: "Claude Haiku 3.5", contextLength: 200000, costInputPer1k: 0.0008, costOutputPer1k: 0.004, inputPricePer1k: 0.001, outputPricePer1k: 0.005 },
       ];
     }
   } else if (p.protocol === "OPENAI") {
