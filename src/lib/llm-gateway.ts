@@ -318,29 +318,44 @@ export function anthropicStreamToOpenAI(
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          buffer += decoder.decode(value, { stream: true });
+          // Normalize \r\n → \n so we handle both line-ending styles
+          buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
 
-          // Process SSE events separated by blank lines
+          // Process SSE events separated by blank lines (\n\n)
           let idx;
           while ((idx = buffer.indexOf("\n\n")) !== -1) {
             const raw = buffer.slice(0, idx);
             buffer = buffer.slice(idx + 2);
 
+            // Extract all data: lines from this event block
             const dataLines = raw
               .split("\n")
               .filter((l) => l.startsWith("data:"))
               .map((l) => l.slice(5).trim());
+
             for (const line of dataLines) {
               if (!line || line === "[DONE]") continue;
               try {
                 const evt = JSON.parse(line);
-                if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
-                  sendDelta({ content: evt.delta.text });
+                // Log first few events to help debug format differences
+                if (process.env.NODE_ENV !== "production") {
+                  console.log("[AnthropicStream] event type:", evt.type, JSON.stringify(evt).slice(0, 120));
+                }
+                if (evt.type === "content_block_delta") {
+                  const delta = evt.delta;
+                  if (delta?.type === "text_delta" && delta.text) {
+                    sendDelta({ content: delta.text });
+                  } else if (delta?.type === "input_json_delta" && delta.partial_json) {
+                    // Tool use streaming — pass through as text for now
+                    sendDelta({ content: delta.partial_json });
+                  }
                 } else if (evt.type === "message_delta" && evt.delta?.stop_reason) {
-                  sendDelta({}, evt.delta.stop_reason);
+                  sendDelta({}, evt.delta.stop_reason === "end_turn" ? "stop" : evt.delta.stop_reason);
+                } else if (evt.type === "message_stop") {
+                  sendDelta({}, "stop");
                 }
               } catch {
-                /* ignore */
+                /* ignore malformed lines */
               }
             }
           }

@@ -305,11 +305,26 @@ export async function POST(req: Request) {
       }
 
       // ── Non-streaming ──
-      const claudeData = await claudeRes.json();
-      const textContent = (claudeData?.content || [])
-        .filter((c: any) => c.type === "text")
-        .map((c: any) => c.text)
-        .join("");
+      const rawClaudeText = await claudeRes.text();
+      console.log("[Claude Non-Stream] raw response:", rawClaudeText.slice(0, 500));
+      let claudeData: any;
+      try { claudeData = JSON.parse(rawClaudeText); } catch {
+        return openaiError(`Claude returned non-JSON: ${rawClaudeText.slice(0, 200)}`, "upstream_error", 502);
+      }
+      // KIE may return content as a plain string field or as content array
+      let textContent = "";
+      if (Array.isArray(claudeData?.content)) {
+        textContent = claudeData.content
+          .filter((c: any) => c.type === "text")
+          .map((c: any) => c.text ?? "")
+          .join("");
+      } else if (typeof claudeData?.content === "string") {
+        textContent = claudeData.content;
+      } else if (typeof claudeData?.completion === "string") {
+        // Some Claude-compatible APIs return { completion: "..." }
+        textContent = claudeData.completion;
+      }
+      console.log("[Claude Non-Stream] textContent:", textContent.slice(0, 200));
       const claudeUsage = {
         input: claudeData?.usage?.input_tokens ?? 0,
         output: claudeData?.usage?.output_tokens ?? 0,
