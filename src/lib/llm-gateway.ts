@@ -287,7 +287,7 @@ async function forwardAnthropic({
 }
 
 
-function anthropicStreamToOpenAI(
+export function anthropicStreamToOpenAI(
   upstream: ReadableStream<Uint8Array>,
   model: string
 ): ReadableStream<Uint8Array> {

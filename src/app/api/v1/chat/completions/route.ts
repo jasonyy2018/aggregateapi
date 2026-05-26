@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
-import { forwardChatCompletion, type OpenAIChatBody } from "@/lib/llm-gateway";
+import { forwardChatCompletion, anthropicStreamToOpenAI, type OpenAIChatBody } from "@/lib/llm-gateway";
 import { generateImage, createVideoMusicTask, queryTaskStatus } from "@/lib/multimodal-gateway";
 
 export const dynamic = "force-dynamic";
@@ -225,6 +225,110 @@ export async function POST(req: Request) {
           }
         });
       }
+    }
+
+    // 3.6 Intercept Claude models — route through /claude/v1/messages (Anthropic format)
+    // KIE exposes Claude at a dedicated endpoint; calling /v1/chat/completions with claude-* returns 404.
+    // We transparently convert the OpenAI request to Anthropic format and back, so any client
+    // (e.g. Cherry Studio in OpenAI mode) can use Claude models without extra configuration.
+    const isClaude = model.modelId.toLowerCase().startsWith("claude-");
+    if (isClaude) {
+      const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
+      const upstreamUrl = `${cleanBase}/claude/v1/messages`;
+
+      // Convert OpenAI messages → Anthropic format
+      let system: string | undefined;
+      const anthropicMessages: any[] = [];
+      for (const m of (body.messages || [])) {
+        if ((m as any).role === "system") {
+          const txt = typeof (m as any).content === "string" ? (m as any).content : "";
+          system = system ? `${system}\n\n${txt}` : txt;
+        } else {
+          const role = (m as any).role === "assistant" ? "assistant" : "user";
+          const raw = (m as any).content;
+          const content = typeof raw === "string"
+            ? [{ type: "text", text: raw }]
+            : Array.isArray(raw)
+              ? raw.map((c: any) => c.type === "text" ? { type: "text", text: c.text ?? "" } : c)
+              : [{ type: "text", text: String(raw ?? "") }];
+          anthropicMessages.push({ role, content });
+        }
+      }
+
+      const anthropicPayload: any = {
+        model: model.modelId,
+        messages: anthropicMessages,
+        max_tokens: body.max_tokens ?? 4096,
+        stream: !!body.stream,
+      };
+      if (system) anthropicPayload.system = system;
+      if (body.temperature !== undefined) anthropicPayload.temperature = body.temperature;
+      if ((body as any).top_p !== undefined) anthropicPayload.top_p = (body as any).top_p;
+
+      const claudeRes = await fetch(upstreamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${upstreamKey}`,
+          "x-api-key": upstreamKey,
+          "anthropic-version": "2023-06-01",
+          ...(provider.extraHeaders as Record<string, string> | null ?? {}),
+        },
+        body: JSON.stringify(anthropicPayload),
+      });
+
+      if (!claudeRes.ok) {
+        const errText = await claudeRes.text();
+        let msg = `Claude API Error (HTTP ${claudeRes.status})`;
+        try { const e = JSON.parse(errText); msg = e?.error?.message || e?.message || msg; } catch {}
+        return openaiError(msg, "upstream_error", claudeRes.status || 502);
+      }
+
+      const discountRateClaude = apiKey.user.discountRate ?? 1.0;
+
+      // ── Streaming ──
+      if (body.stream) {
+        if (!claudeRes.body) return openaiError("Empty upstream body", "upstream_error", 502);
+        const converted = anthropicStreamToOpenAI(claudeRes.body, model.modelId);
+        if (!isAdmin) {
+          const est = estimatePromptTokens(body);
+          const outEst = Math.min(body.max_tokens ?? 512, 1024);
+          const cost = computeCost(est, outEst, model) * discountRateClaude;
+          void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, est + outEst, cost);
+        } else {
+          void prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
+        }
+        return new Response(converted, {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+        });
+      }
+
+      // ── Non-streaming ──
+      const claudeData = await claudeRes.json();
+      const textContent = (claudeData?.content || [])
+        .filter((c: any) => c.type === "text")
+        .map((c: any) => c.text)
+        .join("");
+      const claudeUsage = {
+        input: claudeData?.usage?.input_tokens ?? 0,
+        output: claudeData?.usage?.output_tokens ?? 0,
+        total: (claudeData?.usage?.input_tokens ?? 0) + (claudeData?.usage?.output_tokens ?? 0),
+      };
+      if (!isAdmin) {
+        const cost = computeCost(claudeUsage.input, claudeUsage.output, model) * discountRateClaude;
+        await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, claudeUsage.total, cost);
+      } else {
+        await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
+      }
+      return NextResponse.json({
+        id: claudeData?.id || `chatcmpl-${Date.now()}`,
+        object: "chat.completion",
+        created: Math.floor(Date.now() / 1000),
+        model: model.modelId,
+        choices: [{ index: 0, message: { role: "assistant", content: textContent }, finish_reason: claudeData?.stop_reason || "stop" }],
+        usage: { prompt_tokens: claudeUsage.input, completion_tokens: claudeUsage.output, total_tokens: claudeUsage.total },
+      });
     }
 
     // 4. Forward
