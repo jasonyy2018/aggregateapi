@@ -94,21 +94,24 @@ export async function POST(req: Request) {
     const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
     const upstreamUrl = `${cleanBase}/api/v1/jobs/createTask`;
 
-    // Determine the correct upstream model ID
-    // If the resolved model has a known mapping, use it; otherwise fall back to the raw name
-    let upstreamModel = requestedModel;
+    // Determine the correct upstream model ID.
+    // IMPORTANT: Use dbModelId (the resolved platform model ID, e.g. "google-nano-banana-2-1k")
+    // as the base for mapping — NOT requestedModel (the raw client input, e.g. "nano-banana-2").
+    // This ensures the mapping functions receive the canonical platform ID they expect.
+    let upstreamModel = dbModelId;
     // Try image model mapping (covers flux, midjourney, nano-banana, etc.)
-    const mappedImage = mapImageModel(upstreamModel);
-    if (mappedImage.upstreamModelId !== upstreamModel) {
+    const mappedImage = mapImageModel(dbModelId);
+    if (mappedImage.upstreamModelId !== dbModelId) {
       upstreamModel = mappedImage.upstreamModelId;
-    }
-    // Try video model mapping (covers kling, runway, suno, etc.)
-    if (upstreamModel === requestedModel) {
-      const mappedVideo = mapVideoModel(upstreamModel);
-      if (mappedVideo.upstreamModelId !== upstreamModel) {
+    } else {
+      // Try video model mapping (covers kling, runway, suno, etc.)
+      const mappedVideo = mapVideoModel(dbModelId);
+      if (mappedVideo.upstreamModelId !== dbModelId) {
         upstreamModel = mappedVideo.upstreamModelId;
       }
     }
+
+    console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"`);
 
     const upstreamPayload = {
       model: upstreamModel,
@@ -121,6 +124,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${upstreamKey}`,
+        ...(provider.extraHeaders as Record<string, string> | null ?? {}),
       },
       body: JSON.stringify(upstreamPayload),
     });

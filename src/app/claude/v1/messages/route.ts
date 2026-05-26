@@ -40,7 +40,9 @@ export async function POST(req: Request) {
     if (user.isBanned) {
       return anthropicError("Your account has been suspended", "access_denied", 403);
     }
-    if (user.balance < 0.0001) {
+    // ADMIN users bypass the balance check.
+    const isAdmin = user.role === "ADMIN";
+    if (!isAdmin && user.balance < 0.0001) {
       return anthropicError("Insufficient balance", "insufficient_balance", 402);
     }
 

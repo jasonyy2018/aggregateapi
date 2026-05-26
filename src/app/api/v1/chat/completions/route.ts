@@ -31,7 +31,10 @@ export async function POST(req: Request) {
     if (user.isBanned) {
       return openaiError("Your account has been suspended", "access_denied", 403);
     }
-    if (user.balance < 0.0001) {
+    // ADMIN users bypass the balance check — they can always test the platform.
+    // Regular users must have a positive balance to proceed.
+    const isAdmin = user.role === "ADMIN";
+    if (!isAdmin && user.balance < 0.0001) {
       return openaiError("Insufficient balance", "insufficient_balance", 402);
     }
 
@@ -97,8 +100,8 @@ export async function POST(req: Request) {
       const discountRate = apiKey.user.discountRate ?? 1.0;
       const finalFee = model.inputPricePer1k * discountRate;
 
-      // Check balance
-      if (user.balance < finalFee) {
+      // Check balance (ADMIN users bypass this check)
+      if (!isAdmin && user.balance < finalFee) {
         return openaiError("Insufficient balance for this generation", "insufficient_balance", 402);
       }
 
@@ -239,18 +242,22 @@ export async function POST(req: Request) {
       // For MVP we do not tap into stream bodies to count tokens;
       // we instead charge a minimum per-request fee using max_tokens heuristic,
       // and let future iterations parse the stream.
-      const promptEstimate = estimatePromptTokens(body);
-      const outputEstimate = Math.min(body.max_tokens ?? 512, 1024);
-      const cost = computeCost(promptEstimate, outputEstimate, model) * discountRate;
-      void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate + outputEstimate, cost);
+      if (!isAdmin) {
+        const promptEstimate = estimatePromptTokens(body);
+        const outputEstimate = Math.min(body.max_tokens ?? 512, 1024);
+        const cost = computeCost(promptEstimate, outputEstimate, model) * discountRate;
+        void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate + outputEstimate, cost);
+      } else {
+        void prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
+      }
       return response;
     }
 
-    if (usage) {
+    if (usage && !isAdmin) {
       const cost = computeCost(usage.input, usage.output, model) * discountRate;
       await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, usage.total, cost);
     } else {
-      // Just touch lastUsedAt
+      // Admin users or no usage data — just touch lastUsedAt
       await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
     }
 

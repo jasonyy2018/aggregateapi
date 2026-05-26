@@ -434,27 +434,44 @@ export async function testProviderConnection(providerId: string) {
 
     const isKie = p.slug.toLowerCase() === "kie" || base.includes("kie.ai");
     if (isKie) {
-      // Test Kie.ai using its credit query endpoint which requires Bearer token auth
-      const cleanBase = base.replace(/\/v1$/, ""); // Remove trailing /v1 if present to target the root API path
-      const res = await fetch(`${cleanBase}/api/v1/chat/credit`, {
+      // Test Kie.ai using its credit query endpoint which requires Bearer token auth.
+      // Strip trailing /v1 if present — the credit endpoint is at the API root.
+      // Correct baseUrl formats: "https://api.kie.ai" or "https://api.kie.ai/v1"
+      // Incorrect: "https://api.kie.ai/api/v1" (would make path /api/api/v1/...)
+      const cleanBase = base.replace(/\/v1$/, "").replace(/\/api$/, "");
+      const testUrl = `${cleanBase}/api/v1/chat/credit`;
+      console.log(`[KIE Test] Testing connection to: ${testUrl}`);
+      const res = await fetch(testUrl, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           ...(p.extraHeaders as Record<string, string> | null ?? {}),
         },
       });
+      const rawText = await res.text();
       if (!res.ok) {
-        // Try absolute fallback URL to make sure we reach the correct root URL
-        const fallbackRes = await fetch("https://api.kie.ai/api/v1/chat/credit", {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-        });
-        if (!fallbackRes.ok) {
-          const text = await fallbackRes.text();
-          throw new Error(`Kie.ai Authentication Failed (HTTP ${fallbackRes.status}): ${text.slice(0, 100)}`);
-        }
+        let detail = rawText.slice(0, 200);
+        // Try to parse JSON error for cleaner message
+        try {
+          const errJson = JSON.parse(rawText);
+          detail = errJson?.msg || errJson?.message || errJson?.error || detail;
+        } catch { /* ignore */ }
+        throw new Error(
+          `Kie.ai connection failed (HTTP ${res.status}).\n` +
+          `• Tested URL: ${testUrl}\n` +
+          `• Error: ${detail}\n\n` +
+          `Tip: Ensure Provider baseUrl is set to "https://api.kie.ai" or "https://api.kie.ai/v1" (NOT .../api/v1).`
+        );
       }
-      return { success: true, message: `OK - Successfully connected to Kie.ai (API Key is valid)` };
+      // Parse credit info for display
+      let creditInfo = "";
+      try {
+        const data = JSON.parse(rawText);
+        const credits = data?.data?.totalCredits ?? data?.data?.credits ?? data?.data;
+        if (credits !== undefined && credits !== null) {
+          creditInfo = ` | Credits remaining: ${credits}`;
+        }
+      } catch { /* ignore */ }
+      return { success: true, message: `OK — Connected to Kie.ai successfully${creditInfo}` };
     }
 
     if (p.protocol === "OPENAI") {
