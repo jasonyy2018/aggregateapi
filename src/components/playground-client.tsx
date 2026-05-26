@@ -100,6 +100,7 @@ export function PlaygroundClient({
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [imageUrlInput, setImageUrlInput] = useState("");
 
   // 🎬 Video State
   const [selectedVideoModel, setSelectedVideoModel] = useState(finalVideoModels[0]?.id || "");
@@ -125,14 +126,48 @@ export function PlaygroundClient({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Polling for active video and music tasks
+  // Polling for active image, video and music tasks
   useEffect(() => {
+    const activeImageTasks = images.filter((img: any) => img.status === "generating");
     const activeVideoTasks = videos.filter((v) => v.status === "waiting" || v.status === "generating");
     const activeMusicTasks = songs.filter((s) => s.status === "waiting" || s.status === "generating");
 
-    if (activeVideoTasks.length === 0 && activeMusicTasks.length === 0) return;
+    if (activeImageTasks.length === 0 && activeVideoTasks.length === 0 && activeMusicTasks.length === 0) return;
 
     const interval = setInterval(async () => {
+      // 0. Poll Image Tasks (Image-to-Image)
+      for (const image of activeImageTasks) {
+        const imgItem = image as any;
+        if (!imgItem.id || !imgItem.providerSlug) continue; // id is taskId for async images
+        try {
+          const res = await fetch(`/api/v1/tasks/status?taskId=${encodeURIComponent(imgItem.id)}&providerSlug=${encodeURIComponent(imgItem.providerSlug)}`, {
+            headers: { Authorization: `Bearer ${apiKey}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.state === "success") {
+              setImages((prev) =>
+                prev.map((img: any) =>
+                  img.id === imgItem.id
+                    ? { ...img, status: "success", url: data.resultUrls[0] }
+                    : img
+                )
+              );
+            } else if (data.state === "fail") {
+              setImages((prev) =>
+                prev.map((img: any) =>
+                  img.id === imgItem.id
+                    ? { ...img, status: "fail", failMsg: data.failMsg || "Generation failed" }
+                    : img
+                )
+              );
+            }
+          }
+        } catch (e) {
+          console.error("Error polling image task:", e);
+        }
+      }
+
       // 1. Poll Video Tasks
       for (const video of activeVideoTasks) {
         if (!video.taskId || !video.providerSlug) continue;
@@ -199,7 +234,7 @@ export function PlaygroundClient({
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [videos, songs, apiKey]);
+  }, [images, videos, songs, apiKey]);
 
   // 💬 Handle Chat Send
   const handleChatSubmit = async (e: React.FormEvent) => {
@@ -275,42 +310,109 @@ export function PlaygroundClient({
     setIsImageLoading(true);
     setImageError("");
 
+    // Determine if we need to route through unified jobs (for async tasks) or normal generations
+    const isImageToImage = selectedImageModel.toLowerCase().includes("image-to-image");
+
     try {
-      const res = await fetch("/api/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          prompt: imagePrompt,
-          model: selectedImageModel,
-          size: imageSize,
-        }),
-      });
+      // Check if image-to-image model is chosen but no URL is provided
+      if (isImageToImage && !imageUrlInput.trim()) {
+        throw new Error(locale === "zh" ? "此图生图模型需要至少一个参考底图 URL" : "This Image-to-Image model requires at least one source image URL");
+      }
+
+      // Convert comma-separated URLs or single URL to array
+      const urlsArray = imageUrlInput
+        ? imageUrlInput.split(",").map((url) => url.trim()).filter((url) => url.startsWith("http"))
+        : [];
+
+      if (isImageToImage && urlsArray.length === 0) {
+        throw new Error(locale === "zh" ? "请输入有效的参考底图 URL (以 http/https 开头)" : "Please enter a valid source image URL starting with http/https");
+      }
+
+      let res;
+      if (isImageToImage) {
+        // Image-to-Image models in KIE protocol use createTask as they are async tasks
+        // We call /api/v1/tasks/create which wraps the async task creation
+        res = await fetch("/api/v1/tasks/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            prompt: imagePrompt,
+            model: selectedImageModel,
+            aspect_ratio: imageSize === "1024x1024" ? "1:1" : imageSize === "1024x576" ? "16:9" : imageSize === "1024x768" ? "4:3" : "3:4",
+            input_urls: urlsArray,
+          }),
+        });
+      } else {
+        // Normal text-to-image models use synchronous generations
+        res = await fetch("/api/v1/images/generations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            prompt: imagePrompt,
+            model: selectedImageModel,
+            size: imageSize,
+          }),
+        });
+      }
 
       if (!res.ok) {
         const text = await res.text();
         let errMsg = "Generation failed";
-        try { errMsg = JSON.parse(text)?.error?.message || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        try { errMsg = JSON.parse(text)?.error?.message || JSON.parse(text)?.error || JSON.parse(text)?.details || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
         throw new Error(errMsg);
       }
 
       const data = await res.json();
-      const newImgUrl = data?.data?.[0]?.url;
-      if (!newImgUrl) throw new Error("No image URL returned");
+      
+      if (isImageToImage) {
+        // For I2I, it returns a taskId and is asynchronous. We can poll for it!
+        // We will insert it into the gallery with a "generating" status
+        if (!data.success || !data.taskId) {
+          throw new Error(locale === "zh" ? "未能成功创建异步画图任务" : "Failed to create async painting task");
+        }
+        
+        // Add to images as a "generating" entry or we can use a temporary polling structure.
+        // Let's modify GeneratedImage type to support active polling in Playground, or we can poll within this tab.
+        // Let's create a temporary polling routine in our useEffect for images or add it to images list directly.
+        setImages((prev) => [
+          {
+            id: data.taskId, // use taskId as unique id
+            url: "", // empty at first
+            prompt: imagePrompt,
+            model: selectedImageModel,
+            timestamp: new Date().toLocaleString(),
+            // We append a custom field for status so our gallery can render a loader
+            status: "generating",
+            providerSlug: data.providerSlug,
+          } as any,
+          ...prev,
+        ]);
+        setImagePrompt("");
+        setImageUrlInput("");
+      } else {
+        const newImgUrl = data?.data?.[0]?.url;
+        if (!newImgUrl) throw new Error("No image URL returned");
 
-      setImages((prev) => [
-        {
-          id: Math.random().toString(),
-          url: newImgUrl,
-          prompt: imagePrompt,
-          model: selectedImageModel,
-          timestamp: new Date().toLocaleString(),
-        },
-        ...prev,
-      ]);
-      setImagePrompt("");
+        setImages((prev) => [
+          {
+            id: Math.random().toString(),
+            url: newImgUrl,
+            prompt: imagePrompt,
+            model: selectedImageModel,
+            timestamp: new Date().toLocaleString(),
+            status: "success",
+          } as any,
+          ...prev,
+        ]);
+        setImagePrompt("");
+        setImageUrlInput("");
+      }
     } catch (err: any) {
       setImageError(err.message);
     } finally {
@@ -654,6 +756,26 @@ export function PlaygroundClient({
                   />
                 </div>
 
+                {/* 🌟 Dynamic Image-to-Image Input Field */}
+                {selectedImageModel.toLowerCase().includes("image-to-image") && (
+                  <div className="space-y-2 animate-fade-in p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-xl">
+                    <label className="text-xs font-bold text-brand-primary block">
+                      {locale === "zh" ? "🔗 参考底图 URL" : "🔗 Reference Image URL"}
+                    </label>
+                    <input
+                      type="url"
+                      value={imageUrlInput}
+                      onChange={(e) => setImageUrlInput(e.target.value)}
+                      placeholder={locale === "zh" ? "输入以 http/https 开头的图片链接..." : "Enter image URL starting with http/https..."}
+                      className="w-full bg-bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                      disabled={!apiKey || isImageLoading}
+                    />
+                    <p className="text-4xs text-text-muted mt-1 leading-normal">
+                      {locale === "zh" ? "图生图 (I2I) 模型必须提供参考图。若有多个 URL 可用逗号分隔。" : "Image-to-Image models require a source image URL. Separate multiple with commas."}
+                    </p>
+                  </div>
+                )}
+
                 {imageError && <div className="text-xs font-bold text-red-500 bg-red-500/10 p-3 rounded-lg border border-red-500/20">{imageError}</div>}
 
                 <button
@@ -687,33 +809,55 @@ export function PlaygroundClient({
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {images.map((img) => (
+                    {images.map((img: any) => (
                       <div
                         key={img.id}
-                        className="bg-bg-surface-hover/20 border border-border-subtle rounded-2xl overflow-hidden hover:shadow-md transition-all group hover:border-brand-primary/30"
+                        className={`bg-bg-surface-hover/20 border border-border-subtle rounded-2xl overflow-hidden hover:shadow-md transition-all group ${
+                          img.status === "generating" ? "border-brand-primary animate-pulse" : "hover:border-brand-primary/30"
+                        }`}
                       >
-                        <div className="relative aspect-square overflow-hidden bg-black/5">
-                          <img
-                            src={img.url}
-                            alt={img.prompt}
-                            className="w-full h-full object-cover transition-transform group-hover:scale-[1.02] duration-300"
-                            loading="lazy"
-                          />
+                        <div className="relative aspect-square overflow-hidden bg-black/5 flex items-center justify-center">
+                          {img.status === "generating" ? (
+                            <div className="flex flex-col items-center gap-3 p-4 text-center">
+                              <div className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                              <span className="text-xs font-bold text-brand-primary">
+                                {locale === "zh" ? "异步排队生成中..." : "Generating Async..."}
+                              </span>
+                              <span className="text-4xs text-text-muted">Task ID: {img.id.slice(0, 16)}...</span>
+                            </div>
+                          ) : img.status === "fail" ? (
+                            <div className="flex flex-col items-center gap-2 p-6 text-center text-red-500 bg-red-500/5 h-full w-full justify-center">
+                              <span className="text-3xl">⚠️</span>
+                              <span className="text-xs font-bold">{locale === "zh" ? "绘画任务生成失败" : "Failed to Paint"}</span>
+                              <p className="text-4xs opacity-80 max-w-[200px] truncate">{img.failMsg || "Unknown KIE Error"}</p>
+                            </div>
+                          ) : (
+                            <img
+                              src={img.url}
+                              alt={img.prompt}
+                              className="w-full h-full object-cover transition-transform group-hover:scale-[1.02] duration-300"
+                              loading="lazy"
+                            />
+                          )}
                         </div>
                         <div className="p-4 space-y-2">
                           <p className="text-xs font-bold text-text-main line-clamp-2" title={img.prompt}>
                             {img.prompt}
                           </p>
                           <div className="flex items-center justify-between text-3xs text-text-muted font-semibold pt-2 border-t border-border-subtle">
-                            <span>{img.model}</span>
-                            <a
-                              href={img.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-brand-primary hover:underline"
-                            >
-                              Download →
-                            </a>
+                            <span>{img.model.split("/").pop()}</span>
+                            {img.status === "success" && img.url ? (
+                              <a
+                                href={img.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-brand-primary hover:underline font-bold"
+                              >
+                                Download →
+                              </a>
+                            ) : (
+                              <span className="opacity-50">Locked</span>
+                            )}
                           </div>
                         </div>
                       </div>
