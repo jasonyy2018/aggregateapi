@@ -660,6 +660,7 @@ export async function importProviderModels(providerId: string) {
         { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (Image-to-Video)", capabilities: ["video"], costInputPer1k: 0.125 },
         { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (Text-to-Video)", capabilities: ["video"], costInputPer1k: 0.095 },
         { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (Image-to-Video)", capabilities: ["video"], costInputPer1k: 0.057 },
+        { id: "bytedance/seedance-2-fast", displayName: "Seedance 2.0 Fast", capabilities: ["video"], costInputPer1k: 0.12 },
 
         // Google Veo 3.1 series (Kie.ai Video)
         { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Veo 3.1 Text-to-Video 1080p", capabilities: ["video"], costInputPer1k: 1.28 },
@@ -694,6 +695,7 @@ export async function importProviderModels(providerId: string) {
 
         // GPT Image 2 (text-to-image)
         { id: "gpt-image-2", displayName: "GPT Image 2", capabilities: ["image"], costInputPer1k: 0.024, inputPricePer1k: 0.03 },
+        { id: "gpt-image-2-text-to-image", displayName: "GPT Image 2 Text-to-Image", capabilities: ["image"], costInputPer1k: 0.024, inputPricePer1k: 0.03 },
 
         // GPT Image 2 (image-to-image, resolution-tiered)
         // Client sends model="gpt-image-2-image-to-image" + input.resolution="1K"/"2K"/"4K"

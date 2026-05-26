@@ -91,6 +91,7 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   // ── GPT Image 2 ──
   // NOTE: KIE rejects "gpt-image-2" as unsupported. Correct upstream names use slash notation.
   "gpt-image-2":                   { upstreamModelId: "gpt-image-2/text-to-image",   protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Text-to-Image" },
+  "gpt-image-2-text-to-image":     { upstreamModelId: "gpt-image-2-text-to-image",  protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Text-to-Image (Official KIE name)" },
   "gpt-image-2-image-to-image":    { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Image-to-Image (auto resolution)" },
   "gpt-image-2-image-to-image-1k": { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "1K" }, description: "GPT Image 2 Image-to-Image (1K)" },
   "gpt-image-2-image-to-image-2k": { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "2K" }, description: "GPT Image 2 Image-to-Image (2K)" },
@@ -124,6 +125,7 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "seedance-2.0-720p-no-video-input":   { upstreamModelId: "bytedance/seedance-2", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p" }, description: "Seedance 2.0 720p (Text-to-Video)" },
   "seedance-2.0-480p-with-video-input": { upstreamModelId: "bytedance/seedance-2", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "480p" }, description: "Seedance 2.0 480p (Image-to-Video)" },
   "seedance-2.0-720p-with-video-input": { upstreamModelId: "bytedance/seedance-2", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p" }, description: "Seedance 2.0 720p (Image-to-Video)" },
+  "bytedance/seedance-2-fast":          { upstreamModelId: "bytedance/seedance-2-fast", protocol: "kie-task-video", billing: "flat-rate", description: "Bytedance Seedance 2.0 Fast (Official KIE name)" },
 
   // ── Kling 2.6 Motion Control ──
   "kling-2.6-motion-control-720p":  { upstreamModelId: "kling-2.6/motion-control", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p"  }, description: "Kling 2.6 Motion Control (720p)" },
