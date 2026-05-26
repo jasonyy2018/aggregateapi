@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
-import { mapImageModel, mapVideoModel } from "@/lib/multimodal-gateway";
+import { getRegistryEntry } from "@/lib/model-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -106,29 +106,21 @@ export async function POST(req: Request) {
     const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
     const upstreamUrl = `${cleanBase}/api/v1/jobs/createTask`;
 
-    // Determine the correct upstream model ID.
-    // IMPORTANT: Use dbModelId (the resolved platform model ID, e.g. "google-nano-banana-2-1k")
-    // as the base for mapping — NOT requestedModel (the raw client input, e.g. "nano-banana-2").
-    // This ensures the mapping functions receive the canonical platform ID they expect.
-    let upstreamModel = dbModelId;
-    // Try image model mapping (covers flux, midjourney, nano-banana, etc.)
-    const mappedImage = mapImageModel(dbModelId);
-    if (mappedImage.upstreamModelId !== dbModelId) {
-      upstreamModel = mappedImage.upstreamModelId;
-    } else {
-      // Try video model mapping (covers kling, runway, suno, etc.)
-      const mappedVideo = mapVideoModel(dbModelId);
-      if (mappedVideo.upstreamModelId !== dbModelId) {
-        upstreamModel = mappedVideo.upstreamModelId;
-      }
-    }
+    // 4. Determine the upstream model ID and any input patch via the registry.
+    // The registry maps DB model IDs → upstream IDs + optional inputPatch fields.
+    const registryEntry = getRegistryEntry(dbModelId);
+    const upstreamModel = registryEntry?.upstreamModelId ?? dbModelId;
+    const inputPatch = registryEntry?.inputPatch ?? {};
 
-    console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"`);
+    console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
+
+    // Merge inputPatch into body.input (client-provided values take priority over patch defaults)
+    const mergedInput = { ...inputPatch, ...body.input };
 
     const upstreamPayload = {
       model: upstreamModel,
       callBackUrl: body.callBackUrl,
-      input: body.input,
+      input: mergedInput,
     };
 
     const res = await fetch(upstreamUrl, {

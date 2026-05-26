@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { forwardChatCompletion, anthropicStreamToOpenAI, type OpenAIChatBody } from "@/lib/llm-gateway";
 import { generateImage, createVideoMusicTask, queryTaskStatus } from "@/lib/multimodal-gateway";
+import { getRegistryEntry } from "@/lib/model-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -80,10 +81,15 @@ export async function POST(req: Request) {
 
     const upstreamKey = decryptSecret(provider.apiKeyCipher);
 
-    // 3.5 Intercept Image/Video/Music models for unified API completions!
-    const isImage = model.capabilities.includes("image");
-    const isVideo = model.capabilities.includes("video");
-    const isMusic = model.capabilities.includes("music");
+    // 3.5 Determine routing: registry first, fall back to DB capabilities
+    const registryEntry = getRegistryEntry(model.modelId);
+    const protocol = registryEntry?.protocol;
+
+    // Registry-aware routing flags
+    const isImage = protocol === "kie-task-image" || (!protocol && model.capabilities.includes("image"));
+    const isVideo = protocol === "kie-task-video" || (!protocol && model.capabilities.includes("video"));
+    const isMusic = protocol === "kie-task-music" || (!protocol && model.capabilities.includes("music"));
+    const isAnthropicChat = protocol === "anthropic-chat" || (!protocol && model.modelId.toLowerCase().startsWith("claude-"));
 
     if (isImage || isVideo || isMusic) {
       // Extract prompt text
@@ -231,8 +237,7 @@ export async function POST(req: Request) {
     // KIE exposes Claude at a dedicated endpoint; calling /v1/chat/completions with claude-* returns 404.
     // We transparently convert the OpenAI request to Anthropic format and back, so any client
     // (e.g. Cherry Studio in OpenAI mode) can use Claude models without extra configuration.
-    const isClaude = model.modelId.toLowerCase().startsWith("claude-");
-    if (isClaude) {
+    if (isAnthropicChat) {
       const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
       const upstreamUrl = `${cleanBase}/claude/v1/messages`;
 

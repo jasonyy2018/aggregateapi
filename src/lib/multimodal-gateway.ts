@@ -227,30 +227,26 @@ export async function generateImage(args: {
 
   if (isKie) {
     const cleanBase = base.replace(/\/v1$/, "");
-    const { upstreamModelId: kieModelId, inputStyle, resolution, quality } = mapImageModel(upstreamModelId);
 
-    console.log(`[Kie.ai Image Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}" (inputStyle=${inputStyle})`);
+    // Use registry for model ID and inputPatch (falls back to identity if not in registry)
+    const { getRegistryEntry } = await import("@/lib/model-registry");
+    const registryEntry = getRegistryEntry(upstreamModelId);
+    const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
+    const inputPatch = registryEntry?.inputPatch ?? {};
 
-    // Build input object based on model family
-    let input: Record<string, any> = { prompt: body.prompt };
+    console.log(`[Kie.ai Image Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
 
-    if (inputStyle === "resolution") {
-      input.resolution = resolution;
-      input.aspect_ratio = "auto";
-    } else if (inputStyle === "quality") {
-      input.quality = quality;
-      // Use size for width/height if provided, otherwise default
-      const size = body.size || "1024x1024";
-      const [w, h] = size.split("x").map(Number);
-      input.width = isNaN(w) ? 1024 : w;
-      input.height = isNaN(h) ? 1024 : h;
-    } else {
-      // "wh" style — standard width/height
-      const size = body.size || "1024x1024";
-      const [w, h] = size.split("x").map(Number);
-      input.width = isNaN(w) ? 1024 : w;
-      input.height = isNaN(h) ? 1024 : h;
-    }
+    // Build base input from prompt + size
+    const size = body.size || "1024x1024";
+    const [w, h] = size.split("x").map(Number);
+    const baseInput: Record<string, any> = {
+      prompt: body.prompt,
+      width:  isNaN(w) ? 1024 : w,
+      height: isNaN(h) ? 1024 : h,
+    };
+
+    // Apply inputPatch (overrides defaults like width/height with resolution/quality/etc.)
+    const input = { ...baseInput, ...inputPatch };
 
     const payload = { model: kieModelId, input };
 
@@ -341,12 +337,17 @@ export async function createVideoMusicTask(args: {
   }
 
   const cleanBase = base.replace(/\/v1$/, "");
-  const { upstreamModelId: kieModelId, resolution: mappedResolution } = mapVideoModel(upstreamModelId);
 
-  console.log(`[Kie.ai Task Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"`);
+  // Use registry for model ID and inputPatch
+  const { getRegistryEntry } = await import("@/lib/model-registry");
+  const registryEntry = getRegistryEntry(upstreamModelId);
+  const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
+  const inputPatchFromRegistry = registryEntry?.inputPatch ?? {};
 
-  // Build input — resolution from body overrides the mapped resolution from model ID
-  const effectiveResolution = body.resolution || mappedResolution;
+  console.log(`[Kie.ai Task Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"${Object.keys(inputPatchFromRegistry).length ? ` + patch ${JSON.stringify(inputPatchFromRegistry)}` : ""}`);
+
+  // Build input — registry patch provides defaults, body overrides them
+  const effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
 
   const input: Record<string, any> = {
     prompt: body.prompt,
