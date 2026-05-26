@@ -10,7 +10,16 @@ export const dynamic = "force-dynamic";
  * into apidog/swagger/etc. will automatically point the sandbox to this platform.
  */
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin; // e.g. https://aapi.togomol.com
+  let origin = req.nextUrl.origin;
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  if (host) {
+    origin = `${proto}://${host}`;
+  }
+  // Ensure we don't return 0.0.0.0 or localhost in production
+  if (origin.includes("0.0.0.0") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    origin = "https://aapi.togomol.com";
+  }
 
   const spec = {
     openapi: "3.0.1",
