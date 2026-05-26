@@ -3,7 +3,9 @@
 # ---------- Base ----------
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
-RUN corepack enable
+# Install pnpm directly from npmmirror (Chinese mirror) to avoid Corepack auto-download
+# which fails on VPS servers with restricted access to registry.npmjs.org.
+RUN npm install -g pnpm --registry=https://registry.npmmirror.com
 WORKDIR /app
 
 # ---------- Dependencies ----------
@@ -12,10 +14,10 @@ COPY package.json pnpm-lock.yaml* .npmrc* ./
 COPY prisma ./prisma
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     if [ -f pnpm-lock.yaml ]; then \
-      pnpm install --frozen-lockfile; \
+      pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com; \
     else \
       echo "WARNING: pnpm-lock.yaml not found, running unlocked install" && \
-      pnpm install --no-frozen-lockfile; \
+      pnpm install --no-frozen-lockfile --registry=https://registry.npmmirror.com; \
     fi
 
 # ---------- Builder ----------
@@ -33,8 +35,8 @@ RUN pnpm run build
 # ---------- Runner (minimal prod image) ----------
 FROM node:20-alpine AS runner
 RUN apk add --no-cache openssl
-# Enable corepack to use pnpm in the runner stage
-RUN corepack enable
+# Same pnpm install approach as base stage (no Corepack)
+RUN npm install -g pnpm --registry=https://registry.npmmirror.com
 WORKDIR /app
 
 ENV NODE_ENV=production
