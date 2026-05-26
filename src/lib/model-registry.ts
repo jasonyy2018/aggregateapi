@@ -89,11 +89,12 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "gpt-image-1.5-image-to-image-medium": { upstreamModelId: "gpt-image-1.5/image-to-image", protocol: "kie-task-image", billing: "flat-rate", inputPatch: { quality: "medium" }, description: "GPT Image 1.5 Image-to-Image (Medium)" },
 
   // ── GPT Image 2 ──
-  "gpt-image-2":                   { upstreamModelId: "gpt-image-2",               protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Text-to-Image" },
-  "gpt-image-2-image-to-image":    { upstreamModelId: "gpt-image-2-image-to-image", protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Image-to-Image (auto resolution)" },
-  "gpt-image-2-image-to-image-1k": { upstreamModelId: "gpt-image-2-image-to-image", protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "1K" }, description: "GPT Image 2 Image-to-Image (1K)" },
-  "gpt-image-2-image-to-image-2k": { upstreamModelId: "gpt-image-2-image-to-image", protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "2K" }, description: "GPT Image 2 Image-to-Image (2K)" },
-  "gpt-image-2-image-to-image-4k": { upstreamModelId: "gpt-image-2-image-to-image", protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "4K" }, description: "GPT Image 2 Image-to-Image (4K)" },
+  // NOTE: KIE rejects "gpt-image-2" as unsupported. Correct upstream names use slash notation.
+  "gpt-image-2":                   { upstreamModelId: "gpt-image-2/text-to-image",   protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Text-to-Image" },
+  "gpt-image-2-image-to-image":    { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate",                                  description: "GPT Image 2 Image-to-Image (auto resolution)" },
+  "gpt-image-2-image-to-image-1k": { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "1K" }, description: "GPT Image 2 Image-to-Image (1K)" },
+  "gpt-image-2-image-to-image-2k": { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "2K" }, description: "GPT Image 2 Image-to-Image (2K)" },
+  "gpt-image-2-image-to-image-4k": { upstreamModelId: "gpt-image-2-image-to-image",  protocol: "kie-task-image", billing: "flat-rate", inputPatch: { resolution: "4K" }, description: "GPT Image 2 Image-to-Image (4K)" },
 
   // ── Google Imagen 4 ──
   "google-imagen4": { upstreamModelId: "google-imagen4", protocol: "kie-task-image", billing: "flat-rate", description: "Google Imagen 4" },
