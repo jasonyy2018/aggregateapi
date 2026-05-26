@@ -692,8 +692,15 @@ export async function importProviderModels(providerId: string) {
         { id: "gpt-image-1.5-text-to-image-high", displayName: "GPT Image 1.5 Text-to-Image High", capabilities: ["image"], costInputPer1k: 0.09, inputPricePer1k: 0.11 },
         { id: "gpt-image-1.5-text-to-image-medium", displayName: "GPT Image 1.5 Text-to-Image Medium", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
 
-        // GPT Image 2
+        // GPT Image 2 (text-to-image)
         { id: "gpt-image-2", displayName: "GPT Image 2", capabilities: ["image"], costInputPer1k: 0.024, inputPricePer1k: 0.03 },
+
+        // GPT Image 2 (image-to-image, resolution-tiered)
+        // Client sends model="gpt-image-2-image-to-image" + input.resolution="1K"/"2K"/"4K"
+        // Platform routes to the correct tier for billing; upstream always uses "gpt-image-2-image-to-image"
+        { id: "gpt-image-2-image-to-image-1k", displayName: "GPT Image 2 Image-to-Image 1K", capabilities: ["image"], costInputPer1k: 0.016, inputPricePer1k: 0.02 },
+        { id: "gpt-image-2-image-to-image-2k", displayName: "GPT Image 2 Image-to-Image 2K", capabilities: ["image"], costInputPer1k: 0.06,  inputPricePer1k: 0.075 },
+        { id: "gpt-image-2-image-to-image-4k", displayName: "GPT Image 2 Image-to-Image 4K", capabilities: ["image"], costInputPer1k: 0.08,  inputPricePer1k: 0.10 },
 
         // Google Imagen4
         { id: "google-imagen4", displayName: "Imagen 4", capabilities: ["image"], costInputPer1k: 0.032, inputPricePer1k: 0.04 },

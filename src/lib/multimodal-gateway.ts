@@ -123,8 +123,16 @@ export function mapImageModel(platformModelId: string): ImageModelMap {
   if (id === "gpt-image-1.5-image-to-image-high")   return { upstreamModelId: "gpt-image-1.5/image-to-image",  inputStyle: "quality", quality: "high" };
   if (id === "gpt-image-1.5-image-to-image-medium") return { upstreamModelId: "gpt-image-1.5/image-to-image",  inputStyle: "quality", quality: "medium" };
 
-  // ── GPT Image 2 ──
+  // ── GPT Image 2 (text-to-image) ──
   if (id === "gpt-image-2") return { upstreamModelId: "gpt-image-2", inputStyle: "wh" };
+
+  // ── GPT Image 2 (image-to-image, resolution-tiered) ──
+  // Resolution is included in input.resolution by the client and forwarded as-is by createTask.
+  // inputStyle "wh" is a safe fallback (unused when going through createTask, not /v1/images/generations).
+  if (id === "gpt-image-2-image-to-image")      return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
+  if (id === "gpt-image-2-image-to-image-1k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
+  if (id === "gpt-image-2-image-to-image-2k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
+  if (id === "gpt-image-2-image-to-image-4k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
 
   // ── Google Imagen 4 ──
   if (id === "google-imagen4") return { upstreamModelId: "google-imagen4", inputStyle: "wh" };

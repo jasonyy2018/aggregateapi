@@ -69,6 +69,18 @@ export async function POST(req: Request) {
       } else {
         dbModelId = hasFirstFrame ? "seedance-2.0-480p-with-video-input" : "seedance-2.0-480p-no-video-input";
       }
+    } else if (requestedModel === "gpt-image-2-image-to-image") {
+      // Route to resolution-tiered DB model for correct billing
+      // The upstream model ID will always be "gpt-image-2-image-to-image" (resolved via mapImageModel)
+      // Resolution is also forwarded in input.resolution to KIE as-is.
+      const res = String(body.input?.resolution || "1K").toUpperCase();
+      if (res === "4K") {
+        dbModelId = "gpt-image-2-image-to-image-4k";
+      } else if (res === "2K") {
+        dbModelId = "gpt-image-2-image-to-image-2k";
+      } else {
+        dbModelId = "gpt-image-2-image-to-image-1k";
+      }
     }
 
     const resolved = await resolveModel(prisma, dbModelId);
