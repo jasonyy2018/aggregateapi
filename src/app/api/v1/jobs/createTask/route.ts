@@ -69,6 +69,18 @@ export async function POST(req: Request) {
       } else {
         dbModelId = hasFirstFrame ? "seedance-2.0-480p-with-video-input" : "seedance-2.0-480p-no-video-input";
       }
+    } else if (requestedModel === "gpt-image-2-text-to-image") {
+      // Route to resolution-tiered DB model for correct billing.
+      // KIE constraint: aspect_ratio=auto (or omitted) only supports 1K;
+      // 1:1 aspect_ratio cannot be used with 4K.
+      const res = String(body.input?.resolution || "1K").toUpperCase();
+      if (res === "4K") {
+        dbModelId = "gpt-image-2-text-to-image-4k";
+      } else if (res === "2K") {
+        dbModelId = "gpt-image-2-text-to-image-2k";
+      } else {
+        dbModelId = "gpt-image-2-text-to-image-1k";
+      }
     } else if (requestedModel === "gpt-image-2-image-to-image") {
       // Route to resolution-tiered DB model for correct billing
       // The upstream model ID will always be "gpt-image-2-image-to-image" (resolved via mapImageModel)
