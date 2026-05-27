@@ -70,13 +70,23 @@ export type TaskCreateBody = {
   image_url?: string;
   image_urls?: string[];
   resolution?: string;
+  // HappyHorse reference-to-video: uses reference_image instead of image_urls
+  reference_image?: string[];
+  // HappyHorse video-edit: takes an existing video as input
+  video_url?: string;
+  // video-edit audio handling
+  audio_setting?: string;
   // Grok Imagine specific
   mode?: string;
+  // Grok Imagine upscale / extend: KIE task ID from a prior generation
+  task_id?: string;
+  index?: number;
   // Music params
   style?: string;
   lyrics?: string;
   instrumental?: boolean;
 };
+
 
 export type UnifiedTaskStatus = {
   taskId: string;
@@ -180,6 +190,10 @@ export function mapVideoModel(platformModelId: string): VideoModelMap {
   if (id === "grok-imagine-text-to-video-720p")  return { upstreamModelId: "grok-imagine/text-to-video",  resolution: "720p" };
   if (id === "grok-imagine-image-to-video-480p") return { upstreamModelId: "grok-imagine/image-to-video", resolution: "480p" };
   if (id === "grok-imagine-image-to-video-720p") return { upstreamModelId: "grok-imagine/image-to-video", resolution: "720p" };
+  // Upscale/extend operate on a prior task_id — no resolution patch needed
+  if (id === "grok-imagine-video-upscale")       return { upstreamModelId: "grok-imagine/upscale" };
+  if (id === "grok-imagine-video-extend")        return { upstreamModelId: "grok-imagine/extend" };
+
 
   // ── Seedance 2.0 (Bytedance) ──
   // KIE upstream model name is "bytedance/seedance-2"
@@ -208,6 +222,14 @@ export function mapVideoModel(platformModelId: string): VideoModelMap {
   // ── Wan 2.6 (Alibaba) ──
   if (id === "wan-2.6-text-to-video")  return { upstreamModelId: "wan-2.6-text-to-video" };
   if (id === "wan-2.6-image-to-video") return { upstreamModelId: "wan-2.6-flash-image-to-video" };
+
+  // ── HappyHorse (Alibaba ATH) ──
+  // Upstream IDs confirmed from official KIE API docs.
+  // reference-to-video sends reference_image[]; video-edit sends video_url.
+  if (id === "happyhorse-text-to-video")       return { upstreamModelId: "happyhorse/text-to-video" };
+  if (id === "happyhorse-image-to-video")      return { upstreamModelId: "happyhorse/image-to-video" };
+  if (id === "happyhorse-reference-to-video")  return { upstreamModelId: "happyhorse/reference-to-video" };
+  if (id === "happyhorse-video-edit")          return { upstreamModelId: "happyhorse/video-edit" };
 
   // Fallback: pass through as-is
   return { upstreamModelId: id };
@@ -386,17 +408,26 @@ export async function createVideoMusicTask(args: {
   const effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
 
   const input: Record<string, any> = {
-    prompt: body.prompt,
-    aspect_ratio: body.aspect_ratio || "16:9",
+    prompt: body.prompt || undefined,
+    aspect_ratio: body.aspect_ratio || undefined,
     duration: body.duration || undefined,
     image_url: body.image_url || undefined,
     image_urls: body.image_urls?.length ? body.image_urls : undefined,
+    // HappyHorse reference-to-video: 1-9 reference images
+    reference_image: body.reference_image?.length ? body.reference_image : undefined,
+    // HappyHorse video-edit: input video URL
+    video_url: body.video_url || undefined,
+    audio_setting: body.audio_setting || undefined,
+    // Grok Imagine: task_id for upscale/extend/image-to-video-from-task
+    task_id: body.task_id || undefined,
+    index: body.index !== undefined ? body.index : undefined,
     style: body.style || undefined,
     lyrics: body.lyrics || undefined,
     instrumental: body.instrumental !== undefined ? body.instrumental : undefined,
     mode: body.mode || undefined,
     resolution: effectiveResolution || undefined,
   };
+
 
   // Remove undefined keys to keep payload clean
   const cleanInput = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined));

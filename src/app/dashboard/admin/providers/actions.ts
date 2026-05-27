@@ -673,6 +673,10 @@ export async function importProviderModels(providerId: string) {
         { id: "grok-imagine-text-to-video-720p", displayName: "Grok Imagine Text-to-Video 720p", capabilities: ["video"], costInputPer1k: 0.015 },
         { id: "grok-imagine-image-to-video-480p", displayName: "Grok Imagine Image-to-Video 480p", capabilities: ["video"], costInputPer1k: 0.008 },
         { id: "grok-imagine-text-to-video-480p", displayName: "Grok Imagine Text-to-Video 480p", capabilities: ["video"], costInputPer1k: 0.008 },
+        // Post-processing: upscale / extend operate on a prior KIE task_id
+        { id: "grok-imagine-video-upscale", displayName: "Grok Imagine Video Upscale",  capabilities: ["video"], costInputPer1k: 0.010, inputPricePer1k: 0.013 },
+        { id: "grok-imagine-video-extend",  displayName: "Grok Imagine Video Extend",   capabilities: ["video"], costInputPer1k: 0.015, inputPricePer1k: 0.020 },
+
 
         // Gemini 2.5 Flash / Pro (Direct Overrides)
         { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.000300, inputPricePer1k: 0.000090, outputPricePer1k: 0.000750 },
@@ -730,6 +734,12 @@ export async function importProviderModels(providerId: string) {
         // Wan 2.6 (Alibaba Video)
         { id: "wan-2.6-text-to-video",               displayName: "Wan 2.6 Text-to-Video",              capabilities: ["video"], costInputPer1k: 0.10, inputPricePer1k: 0.13 },
         { id: "wan-2.6-image-to-video",              displayName: "Wan 2.6 Flash Image-to-Video",       capabilities: ["video"], costInputPer1k: 0.10, inputPricePer1k: 0.13 },
+
+        // HappyHorse (Alibaba ATH Video) — advanced multi-subject & video editing
+        { id: "happyhorse-text-to-video",      displayName: "HappyHorse Text-to-Video",                   capabilities: ["video"], costInputPer1k: 0.18, inputPricePer1k: 0.23 },
+        { id: "happyhorse-image-to-video",     displayName: "HappyHorse Image-to-Video",                  capabilities: ["video"], costInputPer1k: 0.18, inputPricePer1k: 0.23 },
+        { id: "happyhorse-reference-to-video", displayName: "HappyHorse Reference-to-Video (Multi-Subject)", capabilities: ["video"], costInputPer1k: 0.25, inputPricePer1k: 0.32 },
+        { id: "happyhorse-video-edit",         displayName: "HappyHorse Video Edit",                      capabilities: ["video"], costInputPer1k: 0.25, inputPricePer1k: 0.32 },
 
         // Gemini Omni Video series (billed per request flat-rate)
         { id: "gemini-omni-video-6s-4k-no-video-input", displayName: "Gemini Omni Video 6s 4K (No Video Input)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },

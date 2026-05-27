@@ -134,6 +134,10 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "grok-imagine-text-to-video-720p":  { upstreamModelId: "grok-imagine/text-to-video",  protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p" }, description: "Grok Imagine Text-to-Video (720p)" },
   "grok-imagine-image-to-video-480p": { upstreamModelId: "grok-imagine/image-to-video", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "480p" }, description: "Grok Imagine Image-to-Video (480p)" },
   "grok-imagine-image-to-video-720p": { upstreamModelId: "grok-imagine/image-to-video", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p" }, description: "Grok Imagine Image-to-Video (720p)" },
+  // Post-processing: operate on a previously generated KIE task_id
+  "grok-imagine-video-upscale": { upstreamModelId: "grok-imagine/upscale", protocol: "kie-task-video", billing: "flat-rate", description: "Grok Imagine Video Upscale (enhance resolution of prior generation)" },
+  "grok-imagine-video-extend":  { upstreamModelId: "grok-imagine/extend",  protocol: "kie-task-video", billing: "flat-rate", description: "Grok Imagine Video Extend (lengthen a prior generation)" },
+
 
   // ── Seedance 2.0 (Bytedance) ──
   "seedance-2.0-480p-no-video-input":   { upstreamModelId: "bytedance/seedance-2", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "480p" }, description: "Seedance 2.0 480p (Text-to-Video)" },
@@ -176,13 +180,28 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "wan-2.6-text-to-video":   { upstreamModelId: "wan-2.6-text-to-video",        protocol: "kie-task-video", billing: "flat-rate", description: "Wan 2.6 Text-to-Video" },
   "wan-2.6-image-to-video":  { upstreamModelId: "wan-2.6-flash-image-to-video", protocol: "kie-task-video", billing: "flat-rate", description: "Wan 2.6 Flash Image-to-Video" },
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // MUSIC GENERATION (KIE async task)
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
 
   "suno": { upstreamModelId: "suno", protocol: "kie-task-music", billing: "flat-rate", description: "Suno Music Generation" },
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // HAPPYHORSE — Alibaba ATH (video generation + editing)
+  // Upstream IDs confirmed from official KIE API docs (happyhorse/* namespace).
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // text-to-video: prompt + aspect_ratio + resolution + duration
+  "happyhorse-text-to-video":      { upstreamModelId: "happyhorse/text-to-video",      protocol: "kie-task-video", billing: "flat-rate", description: "HappyHorse Text-to-Video" },
+  // image-to-video: image_urls (1 image) + prompt + resolution + duration
+  "happyhorse-image-to-video":     { upstreamModelId: "happyhorse/image-to-video",     protocol: "kie-task-video", billing: "flat-rate", description: "HappyHorse Image-to-Video" },
+  // reference-to-video: reference_image[] (1-9) + prompt + aspect_ratio + resolution + duration
+  "happyhorse-reference-to-video": { upstreamModelId: "happyhorse/reference-to-video", protocol: "kie-task-video", billing: "flat-rate", description: "HappyHorse Reference-to-Video (multi-subject)" },
+  // video-edit: video_url + prompt + reference_image[] (0-5) + resolution + audio_setting
+  "happyhorse-video-edit":         { upstreamModelId: "happyhorse/video-edit",         protocol: "kie-task-video", billing: "flat-rate", description: "HappyHorse Video Edit (style transfer / local replacement)" },
+
 };
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lookup helpers
