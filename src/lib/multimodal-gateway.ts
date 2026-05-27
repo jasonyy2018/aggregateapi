@@ -23,8 +23,12 @@
  *   gpt-image-1.5-text-to-image-medium  → gpt-image-1.5/text-to-image   (input: quality=medium)
  *   gpt-image-1.5-image-to-image-high   → gpt-image-1.5/image-to-image  (input: quality=high)
  *   gpt-image-1.5-image-to-image-medium → gpt-image-1.5/image-to-image  (input: quality=medium)
- *   gpt-image-2                         → gpt-image-2             (input: width, height)
- *   google-imagen4                      → google-imagen4           (input: width, height)
+ *   gpt-image-2                              → gpt-image-2-text-to-image  (input: resolution=1K)
+ *   gpt-image-2-text-to-image              → gpt-image-2-text-to-image  (input: resolution from inputPatch)
+ *   gpt-image-2-text-to-image-1k           → gpt-image-2-text-to-image  (input: resolution=1K)
+ *   gpt-image-2-text-to-image-2k           → gpt-image-2-text-to-image  (input: resolution=2K)
+ *   gpt-image-2-text-to-image-4k           → gpt-image-2-text-to-image  (input: resolution=4K)
+ *   google-imagen4                         → google-imagen4              (input: width, height)
  *
  * VIDEO:
  *   kling                               → kling-2.6/text-to-video
@@ -123,16 +127,22 @@ export function mapImageModel(platformModelId: string): ImageModelMap {
   if (id === "gpt-image-1.5-image-to-image-high")   return { upstreamModelId: "gpt-image-1.5/image-to-image",  inputStyle: "quality", quality: "high" };
   if (id === "gpt-image-1.5-image-to-image-medium") return { upstreamModelId: "gpt-image-1.5/image-to-image",  inputStyle: "quality", quality: "medium" };
 
-  // ── GPT Image 2 (text-to-image) ──
-  if (id === "gpt-image-2") return { upstreamModelId: "gpt-image-2", inputStyle: "wh" };
+  // ── GPT Image 2 (text-to-image, resolution-tiered) ──
+  // These go through /api/v1/images/generations → generateImage() → KIE /api/v1/jobs/createTask.
+  // KIE expects input.resolution (not width/height) for gpt-image-2-text-to-image.
+  // aspect_ratio=auto only allows 1K; 1:1+4K is forbidden per KIE API spec.
+  if (id === "gpt-image-2")                    return { upstreamModelId: "gpt-image-2-text-to-image",  inputStyle: "resolution", resolution: "1K" };
+  if (id === "gpt-image-2-text-to-image")      return { upstreamModelId: "gpt-image-2-text-to-image",  inputStyle: "resolution", resolution: "1K" };
+  if (id === "gpt-image-2-text-to-image-1k")   return { upstreamModelId: "gpt-image-2-text-to-image",  inputStyle: "resolution", resolution: "1K" };
+  if (id === "gpt-image-2-text-to-image-2k")   return { upstreamModelId: "gpt-image-2-text-to-image",  inputStyle: "resolution", resolution: "2K" };
+  if (id === "gpt-image-2-text-to-image-4k")   return { upstreamModelId: "gpt-image-2-text-to-image",  inputStyle: "resolution", resolution: "4K" };
 
   // ── GPT Image 2 (image-to-image, resolution-tiered) ──
-  // Resolution is included in input.resolution by the client and forwarded as-is by createTask.
-  // inputStyle "wh" is a safe fallback (unused when going through createTask, not /v1/images/generations).
-  if (id === "gpt-image-2-image-to-image")      return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
-  if (id === "gpt-image-2-image-to-image-1k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
-  if (id === "gpt-image-2-image-to-image-2k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
-  if (id === "gpt-image-2-image-to-image-4k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "wh" };
+  // inputStyle "resolution" ensures the gateway sends input.resolution instead of width/height.
+  if (id === "gpt-image-2-image-to-image")      return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "resolution", resolution: "1K" };
+  if (id === "gpt-image-2-image-to-image-1k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "resolution", resolution: "1K" };
+  if (id === "gpt-image-2-image-to-image-2k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "resolution", resolution: "2K" };
+  if (id === "gpt-image-2-image-to-image-4k")   return { upstreamModelId: "gpt-image-2-image-to-image", inputStyle: "resolution", resolution: "4K" };
 
   // ── Google Imagen 4 ──
   if (id === "google-imagen4") return { upstreamModelId: "google-imagen4", inputStyle: "wh" };
@@ -247,6 +257,12 @@ export async function generateImage(args: {
 
     // Apply inputPatch (overrides defaults like width/height with resolution/quality/etc.)
     const input = { ...baseInput, ...inputPatch };
+
+    // KIE models that use resolution or quality do NOT accept width/height — strip them.
+    if ("resolution" in inputPatch || "quality" in inputPatch) {
+      delete input.width;
+      delete input.height;
+    }
 
     const payload = { model: kieModelId, input };
 
