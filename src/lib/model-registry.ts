@@ -105,6 +105,16 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   // ── Google Imagen 4 ──
   "google-imagen4": { upstreamModelId: "google-imagen4", protocol: "kie-task-image", billing: "flat-rate", description: "Google Imagen 4" },
 
+  // ── Seedream (ByteDance Image) ──
+  // Upstream IDs confirmed from KIE integration docs: date-stamped version strings.
+  "seedream-4.5":                 { upstreamModelId: "seedream-4-5-251128", protocol: "kie-task-image", billing: "flat-rate", description: "Seedream 4.5" },
+  "seedream-4.5-text-to-image":   { upstreamModelId: "seedream-4-5-251128", protocol: "kie-task-image", billing: "flat-rate", description: "Seedream 4.5 Text-to-Image" },
+  "seedream-4.5-image-to-image":  { upstreamModelId: "seedream-4-5-251128", protocol: "kie-task-image", billing: "flat-rate", description: "Seedream 4.5 Image-to-Image" },
+  "seedream-5.0-lite":                { upstreamModelId: "seedream-5-0-260128", protocol: "kie-task-image", billing: "flat-rate", description: "Seedream 5.0 Lite" },
+  "seedream-5.0-lite-text-to-image":  { upstreamModelId: "seedream-5-0-260128", protocol: "kie-task-image", billing: "flat-rate", description: "Seedream 5.0 Lite Text-to-Image" },
+  "seedream-5.0-lite-image-to-image": { upstreamModelId: "seedream-5-0-260128", protocol: "kie-task-image", billing: "flat-rate", description: "Seedream 5.0 Lite Image-to-Image" },
+
+
   // ═══════════════════════════════════════════════════════════════════════════
   // VIDEO GENERATION (KIE async task)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -153,11 +163,25 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "gemini-omni-video-6s-720p-no-video-input":  { upstreamModelId: "gemini-omni-video", protocol: "kie-task-video", billing: "flat-rate", description: "Gemini Omni Video 6s 720p (no input)" },
   "gemini-omni-video-4s-720p-no-video-input":  { upstreamModelId: "gemini-omni-video", protocol: "kie-task-video", billing: "flat-rate", description: "Gemini Omni Video 4s 720p (no input)" },
 
+  // ── Hailuo (MiniMax Video) ──
+  // Upstream IDs confirmed from KIE docs: hailuo/02-* and hailuo/2-3-* format.
+  "hailuo-02-text-to-video-standard":  { upstreamModelId: "hailuo/02-text-to-video-standard",  protocol: "kie-task-video", billing: "flat-rate", description: "Hailuo 02 Text-to-Video (Standard)" },
+  "hailuo-02-image-to-video-standard": { upstreamModelId: "hailuo/02-image-to-video-standard", protocol: "kie-task-video", billing: "flat-rate", description: "Hailuo 02 Image-to-Video (Standard)" },
+  "hailuo-02-text-to-video-pro":       { upstreamModelId: "hailuo/02-text-to-video-pro",       protocol: "kie-task-video", billing: "flat-rate", description: "Hailuo 02 Text-to-Video (Pro)" },
+  "hailuo-02-image-to-video-pro":      { upstreamModelId: "hailuo/02-image-to-video-pro",      protocol: "kie-task-video", billing: "flat-rate", description: "Hailuo 02 Image-to-Video (Pro)" },
+  "hailuo-2.3-image-to-video-pro":     { upstreamModelId: "hailuo/2-3-image-to-video-pro",     protocol: "kie-task-video", billing: "flat-rate", description: "Hailuo 2.3 Image-to-Video (Pro)" },
+
+  // ── Wan 2.6 (Alibaba Video) ──
+  // Upstream IDs confirmed from KIE community integration nodes.
+  "wan-2.6-text-to-video":   { upstreamModelId: "wan-2.6-text-to-video",        protocol: "kie-task-video", billing: "flat-rate", description: "Wan 2.6 Text-to-Video" },
+  "wan-2.6-image-to-video":  { upstreamModelId: "wan-2.6-flash-image-to-video", protocol: "kie-task-video", billing: "flat-rate", description: "Wan 2.6 Flash Image-to-Video" },
+
   // ═══════════════════════════════════════════════════════════════════════════
   // MUSIC GENERATION (KIE async task)
   // ═══════════════════════════════════════════════════════════════════════════
 
   "suno": { upstreamModelId: "suno", protocol: "kie-task-music", billing: "flat-rate", description: "Suno Music Generation" },
+
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

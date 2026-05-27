@@ -714,6 +714,23 @@ export async function importProviderModels(providerId: string) {
         // Google Imagen4
         { id: "google-imagen4", displayName: "Imagen 4", capabilities: ["image"], costInputPer1k: 0.032, inputPricePer1k: 0.04 },
 
+        // Seedream (ByteDance Image) — high-quality image generation with strong text rendering
+        { id: "seedream-4.5-text-to-image",          displayName: "Seedream 4.5 Text-to-Image",         capabilities: ["image"], costInputPer1k: 0.05, inputPricePer1k: 0.065 },
+        { id: "seedream-4.5-image-to-image",         displayName: "Seedream 4.5 Image-to-Image",        capabilities: ["image"], costInputPer1k: 0.05, inputPricePer1k: 0.065 },
+        { id: "seedream-5.0-lite-text-to-image",     displayName: "Seedream 5.0 Lite Text-to-Image",    capabilities: ["image"], costInputPer1k: 0.07, inputPricePer1k: 0.09 },
+        { id: "seedream-5.0-lite-image-to-image",    displayName: "Seedream 5.0 Lite Image-to-Image",   capabilities: ["image"], costInputPer1k: 0.07, inputPricePer1k: 0.09 },
+
+        // Hailuo (MiniMax Video) — high-quality video generation
+        { id: "hailuo-02-text-to-video-standard",    displayName: "Hailuo 02 Text-to-Video Standard",   capabilities: ["video"], costInputPer1k: 0.12, inputPricePer1k: 0.15 },
+        { id: "hailuo-02-image-to-video-standard",   displayName: "Hailuo 02 Image-to-Video Standard",  capabilities: ["video"], costInputPer1k: 0.12, inputPricePer1k: 0.15 },
+        { id: "hailuo-02-text-to-video-pro",         displayName: "Hailuo 02 Text-to-Video Pro",        capabilities: ["video"], costInputPer1k: 0.22, inputPricePer1k: 0.28 },
+        { id: "hailuo-02-image-to-video-pro",        displayName: "Hailuo 02 Image-to-Video Pro",       capabilities: ["video"], costInputPer1k: 0.22, inputPricePer1k: 0.28 },
+        { id: "hailuo-2.3-image-to-video-pro",       displayName: "Hailuo 2.3 Image-to-Video Pro",      capabilities: ["video"], costInputPer1k: 0.28, inputPricePer1k: 0.35 },
+
+        // Wan 2.6 (Alibaba Video)
+        { id: "wan-2.6-text-to-video",               displayName: "Wan 2.6 Text-to-Video",              capabilities: ["video"], costInputPer1k: 0.10, inputPricePer1k: 0.13 },
+        { id: "wan-2.6-image-to-video",              displayName: "Wan 2.6 Flash Image-to-Video",       capabilities: ["video"], costInputPer1k: 0.10, inputPricePer1k: 0.13 },
+
         // Gemini Omni Video series (billed per request flat-rate)
         { id: "gemini-omni-video-6s-4k-no-video-input", displayName: "Gemini Omni Video 6s 4K (No Video Input)", capabilities: ["video"], costInputPer1k: 1.00, inputPricePer1k: 1.20 },
         { id: "gemini-omni-video-4k-with-video-input", displayName: "Gemini Omni Video 4K (With Video Input)", capabilities: ["video"], costInputPer1k: 1.50, inputPricePer1k: 1.80 },

@@ -147,6 +147,13 @@ export function mapImageModel(platformModelId: string): ImageModelMap {
   // ── Google Imagen 4 ──
   if (id === "google-imagen4") return { upstreamModelId: "google-imagen4", inputStyle: "wh" };
 
+  // ── Seedream (ByteDance Image) ──
+  // KIE uses date-stamped version strings. Both t2i and i2i variants share the same upstream ID.
+  if (id === "seedream-4.5" || id === "seedream-4.5-text-to-image" || id === "seedream-4.5-image-to-image")
+    return { upstreamModelId: "seedream-4-5-251128", inputStyle: "wh" };
+  if (id === "seedream-5.0-lite" || id === "seedream-5.0-lite-text-to-image" || id === "seedream-5.0-lite-image-to-image")
+    return { upstreamModelId: "seedream-5-0-260128", inputStyle: "wh" };
+
   // Fallback: pass through as-is using width/height
   return { upstreamModelId: id, inputStyle: "wh" };
 }
@@ -190,6 +197,17 @@ export function mapVideoModel(platformModelId: string): VideoModelMap {
   if (id.startsWith("gemini-omni-video-")) {
     return { upstreamModelId: "gemini-omni-video" };
   }
+
+  // ── Hailuo (MiniMax) ──
+  if (id === "hailuo-02-text-to-video-standard")  return { upstreamModelId: "hailuo/02-text-to-video-standard" };
+  if (id === "hailuo-02-image-to-video-standard") return { upstreamModelId: "hailuo/02-image-to-video-standard" };
+  if (id === "hailuo-02-text-to-video-pro")       return { upstreamModelId: "hailuo/02-text-to-video-pro" };
+  if (id === "hailuo-02-image-to-video-pro")      return { upstreamModelId: "hailuo/02-image-to-video-pro" };
+  if (id === "hailuo-2.3-image-to-video-pro")     return { upstreamModelId: "hailuo/2-3-image-to-video-pro" };
+
+  // ── Wan 2.6 (Alibaba) ──
+  if (id === "wan-2.6-text-to-video")  return { upstreamModelId: "wan-2.6-text-to-video" };
+  if (id === "wan-2.6-image-to-video") return { upstreamModelId: "wan-2.6-flash-image-to-video" };
 
   // Fallback: pass through as-is
   return { upstreamModelId: id };
@@ -291,9 +309,10 @@ export async function generateImage(args: {
       throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
     }
 
-    const maxRetries = 25;
+    const maxRetries = 35;       // 35 × 3s = 105s — fits within the 120s route maxDuration
+    const pollIntervalMs = 3000; // 3s between polls (GPT Image 2 typically takes 60–90s)
     for (let i = 0; i < maxRetries; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
       const status = await queryKieTaskStatus({ cleanBase, apiKey, taskId, extraHeaders: provider.extraHeaders });
       if (status.state === "success") {
         return {
@@ -306,7 +325,8 @@ export async function generateImage(args: {
       }
     }
 
-    throw new Error("Kie.ai Image Generation Timeout (50s exceeded). Please check task status in dashboard.");
+    throw new Error("Kie.ai Image Generation Timeout (105s exceeded). The task may still be running — check task status in dashboard.");
+
   }
 
   // Fallback: standard OpenAI-compatible synchronous image generations
