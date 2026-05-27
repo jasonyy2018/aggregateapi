@@ -32,51 +32,67 @@ export async function GET(req: Request) {
     },
   });
 
-  const data: any[] = [];
+  // Separate LLM models from non-LLM (image/video/music) so LLMs appear first in Cherry Studio
+  const llmModels: any[] = [];
+  const nonLlmModels: any[] = [];
   const seenRawIds = new Set<string>();
+
+  // Capability → display tag mapping
+  const capTag: Record<string, string> = {
+    image: "[Image]",
+    video: "[Video]",
+    music: "[Music]",
+  };
 
   for (const p of providers) {
     for (const m of p.models) {
-      // Exclude non-LLM models (image, video, music) from the standard models listing
-      const isNonLlm = m.capabilities.some((c) => ["image", "video", "music"].includes(c));
-      if (isNonLlm) {
-        continue;
-      }
+      const nonLlmCap = m.capabilities.find((c) => ["image", "video", "music"].includes(c));
+      const isNonLlm = Boolean(nonLlmCap);
+      const tag = nonLlmCap ? (capTag[nonLlmCap] ?? "[Media]") : "";
 
-      // 1. Add raw clean modelId (e.g. "gpt-4o", "deepseek-chat") for standard client dropdown matches
+      // 1. Add raw clean modelId once (deduped across providers)
       if (!seenRawIds.has(m.modelId)) {
         seenRawIds.add(m.modelId);
-        data.push({
+        const entry = {
           id: m.modelId,
           object: "model",
           created: Math.floor(m.createdAt.getTime() / 1000),
           owned_by: p.slug,
-          display_name: m.displayName,
+          display_name: isNonLlm ? `${tag} ${m.displayName}` : m.displayName,
           context_length: m.contextLength,
           pricing: {
             prompt: m.inputPricePer1k,
             completion: m.outputPricePer1k,
           },
           capabilities: m.capabilities,
-        });
+        };
+        if (isNonLlm) nonLlmModels.push(entry);
+        else llmModels.push(entry);
       }
 
       // 2. Add provider-qualified modelId (e.g. "kie/gpt-4o") for explicit targeted routing
-      data.push({
+      const qualifiedEntry = {
         id: `${p.slug}/${m.modelId}`,
         object: "model",
         created: Math.floor(m.createdAt.getTime() / 1000),
         owned_by: p.slug,
-        display_name: `${m.displayName} (${p.name})`,
+        display_name: isNonLlm
+          ? `${tag} ${m.displayName} (${p.name})`
+          : `${m.displayName} (${p.name})`,
         context_length: m.contextLength,
         pricing: {
           prompt: m.inputPricePer1k,
           completion: m.outputPricePer1k,
         },
         capabilities: m.capabilities,
-      });
+      };
+      if (isNonLlm) nonLlmModels.push(qualifiedEntry);
+      else llmModels.push(qualifiedEntry);
     }
   }
+
+  // LLM models first, then image/video/music models
+  const data = [...llmModels, ...nonLlmModels];
 
   return NextResponse.json({ object: "list", data });
 }
