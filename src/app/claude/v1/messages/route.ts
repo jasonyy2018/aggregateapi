@@ -97,18 +97,16 @@ export async function POST(req: Request) {
     const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
     const upstreamUrl = `${cleanBase}/claude/v1/messages`;
 
-    // KIE uses Bearer token auth (per their OpenAPI spec), while standard Anthropic uses x-api-key.
-    // We send both to be compatible with both KIE and native Anthropic endpoints.
-    const headers: Record<string, string> = {
+    const claudeHeaders: Record<string, string> = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${upstreamKey}`,  // KIE style
       "x-api-key": upstreamKey,                  // Anthropic native style
       "anthropic-version": "2023-06-01",
     };
-    
+
     // Include extra headers if configured on the provider
     const extraHeaders = (provider.extraHeaders as Record<string, string> | null) ?? {};
-    Object.assign(headers, extraHeaders);
+    Object.assign(claudeHeaders, extraHeaders);
 
     // Strip platform-internal fields before forwarding
     const { thinkingFlag: _thinkingFlag, ...bodyToSend } = body as any;
@@ -117,32 +115,44 @@ export async function POST(req: Request) {
       model: model.modelId,
     };
 
-    const res = await fetch(upstreamUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      let errJson;
-      try {
-        errJson = JSON.parse(errText);
-      } catch {
-        // ignore
+    // Retry up to 2 extra times for transient KIE errors (422 / 5xx).
+    // KIE occasionally returns {"code":422,"msg":"The page does not exist"} during brief hiccups.
+    let res: Response | null = null;
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+        console.warn(`[Claude /messages] Retry attempt ${attempt} for ${model.modelId}`);
       }
+      res = await fetch(upstreamUrl, {
+        method: "POST",
+        headers: claudeHeaders,
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) break;
+      const retryable = res.status === 422 || res.status >= 500;
+      if (!retryable) break;
+      console.warn(`[Claude /messages] Attempt ${attempt + 1} got status ${res.status}`);
+    }
+
+    if (!res!.ok) {
+      const errText = await res!.text();
+      console.error(`[Claude /messages] Upstream error after ${maxAttempts} attempts:`, errText.slice(0, 500));
+      let errJson;
+      try { errJson = JSON.parse(errText); } catch { /* ignore */ }
       return NextResponse.json(
         errJson || { error: { message: errText || "Upstream request failed", type: "upstream_error" } },
-        { status: res.status }
+        { status: res!.status }
       );
     }
+
 
     // 6. Charging and Response routing
     if (stream) {
       // Stream charging: upfront based on prompt + max_tokens heuristic
       await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate, outputEstimate, estimatedCost);
 
-      return new Response(res.body, {
+      return new Response(res!.body, {
         status: 200,
         headers: {
           "Content-Type": "text/event-stream",
@@ -153,7 +163,7 @@ export async function POST(req: Request) {
     }
 
     // Non-streaming: actual token billing
-    const data = await res.json();
+    const data = await res!.json();
     const inputTokens = data?.usage?.input_tokens ?? promptEstimate;
     const outputTokens = data?.usage?.output_tokens ?? 0;
     const finalCost = ((inputTokens / 1000) * inputPrice + (outputTokens / 1000) * outputPrice) * discountRate;
@@ -161,6 +171,7 @@ export async function POST(req: Request) {
     await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, inputTokens, outputTokens, finalCost);
 
     return NextResponse.json(data);
+
 
   } catch (err: any) {
     console.error("Claude Gateway error:", err);

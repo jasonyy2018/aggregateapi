@@ -270,31 +270,54 @@ export async function POST(req: Request) {
       if (body.temperature !== undefined) anthropicPayload.temperature = body.temperature;
       if ((body as any).top_p !== undefined) anthropicPayload.top_p = (body as any).top_p;
 
-      const claudeRes = await fetch(upstreamUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${upstreamKey}`,
-          "x-api-key": upstreamKey,
-          "anthropic-version": "2023-06-01",
-          ...(provider.extraHeaders as Record<string, string> | null ?? {}),
-        },
-        body: JSON.stringify(anthropicPayload),
-      });
+      const claudeHeaders = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${upstreamKey}`,
+        "x-api-key": upstreamKey,
+        "anthropic-version": "2023-06-01",
+        ...(provider.extraHeaders as Record<string, string> | null ?? {}),
+      };
 
-      if (!claudeRes.ok) {
-        const errText = await claudeRes.text();
-        let msg = `Claude API Error (HTTP ${claudeRes.status})`;
-        try { const e = JSON.parse(errText); msg = e?.error?.message || e?.message || msg; } catch {}
-        return openaiError(msg, "upstream_error", claudeRes.status || 502);
+      // Retry up to 2 extra times for transient KIE errors (422 / 5xx).
+      // KIE occasionally returns {"code":422,"msg":"The page does not exist"} during
+      // brief service hiccups; a short backoff resolves it without impacting the user.
+      let claudeRes: Response | null = null;
+      const maxAttempts = 3;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) {
+          // 1.5s → 3s backoff
+          await new Promise((r) => setTimeout(r, 1500 * attempt));
+          console.warn(`[Claude Gateway] Retry attempt ${attempt} for model ${model.modelId} after transient error`);
+        }
+        claudeRes = await fetch(upstreamUrl, {
+          method: "POST",
+          headers: claudeHeaders,
+          body: JSON.stringify(anthropicPayload),
+        });
+        // Only retry on KIE transient errors (422 or 5xx); break on success or 4xx auth errors
+        if (claudeRes.ok) break;
+        const retryableStatus = claudeRes.status === 422 || claudeRes.status >= 500;
+        if (!retryableStatus) break;
+        console.warn(`[Claude Gateway] Attempt ${attempt + 1} failed with status ${claudeRes.status}`);
+      }
+
+      if (!claudeRes!.ok) {
+        const errText = await claudeRes!.text();
+        console.error(`[Claude Gateway] Upstream error after ${maxAttempts} attempts:`, errText.slice(0, 500));
+        let msg = `Claude API Error (HTTP ${claudeRes!.status})`;
+        try {
+          const e = JSON.parse(errText);
+          msg = e?.error?.message || e?.msg || e?.message || msg;
+        } catch {}
+        return openaiError(msg, "upstream_error", claudeRes!.status || 502);
       }
 
       const discountRateClaude = apiKey.user.discountRate ?? 1.0;
 
       // ── Streaming ──
       if (body.stream) {
-        if (!claudeRes.body) return openaiError("Empty upstream body", "upstream_error", 502);
-        const converted = anthropicStreamToOpenAI(claudeRes.body, model.modelId);
+        if (!claudeRes!.body) return openaiError("Empty upstream body", "upstream_error", 502);
+        const converted = anthropicStreamToOpenAI(claudeRes!.body, model.modelId);
         if (!isAdmin) {
           const est = estimatePromptTokens(body);
           const outEst = Math.min(body.max_tokens ?? 512, 1024);
@@ -310,7 +333,7 @@ export async function POST(req: Request) {
       }
 
       // ── Non-streaming ──
-      const rawClaudeText = await claudeRes.text();
+      const rawClaudeText = await claudeRes!.text();
       console.log("[Claude Non-Stream] raw response:", rawClaudeText.slice(0, 500));
       let claudeData: any;
       try { claudeData = JSON.parse(rawClaudeText); } catch {
@@ -350,6 +373,7 @@ export async function POST(req: Request) {
         usage: { prompt_tokens: claudeUsage.input, completion_tokens: claudeUsage.output, total_tokens: claudeUsage.total },
       });
     }
+
 
     // 4. Forward
     const { streaming, response, usage } = await forwardChatCompletion({
