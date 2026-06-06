@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addSubscriptionPlan, deleteSubscriptionPlan, toggleSubscriptionPlan } from "@/app/dashboard/admin/actions";
+import { addSubscriptionPlan, deleteSubscriptionPlan, toggleSubscriptionPlan, updateSubscriptionPlan } from "@/app/dashboard/admin/actions";
 
 interface PlanManagerProps {
   providerId: string;
@@ -12,6 +12,7 @@ interface PlanManagerProps {
 export function PlanManager({ providerId, providerModels, initialPlans }: PlanManagerProps) {
   const [plans, setPlans] = useState<any[]>(initialPlans);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Form states
@@ -24,6 +25,35 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
   const [selectedModelId, setSelectedModelId] = useState("");
   const [isUnlimited, setIsUnlimited] = useState(true);
   const [tokenLimit, setTokenLimit] = useState<number>(1000000);
+
+  const openAddForm = () => {
+    setEditingPlan(null);
+    setShowAddForm(true);
+    // Reset states
+    setNameEn("");
+    setNameZh("");
+    setDescriptionEn("");
+    setDescriptionZh("");
+    setPrice(0);
+    setDurationDays(30);
+    setSelectedModelId("");
+    setIsUnlimited(true);
+  };
+
+  const openEditForm = (plan: any) => {
+    setShowAddForm(false);
+    setEditingPlan(plan);
+    // Populate form states
+    setNameEn(plan.nameEn);
+    setNameZh(plan.nameZh);
+    setDescriptionEn(plan.descriptionEn || "");
+    setDescriptionZh(plan.descriptionZh || "");
+    setPrice(plan.price);
+    setDurationDays(plan.durationDays);
+    setSelectedModelId(plan.providerModelId || "");
+    setIsUnlimited(plan.tokenLimit === null);
+    setTokenLimit(plan.tokenLimit || 1000000);
+  };
 
   const handleAddPlan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,33 +76,49 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
 
       if (res?.error) {
         alert(`Error: ${res.error}`);
-      } else {
+      } else if (res?.success && res.plan) {
         alert("Subscription Plan created successfully!");
         setShowAddForm(false);
-        // Refresh local view by appending
-        const newPlanObj = {
-          id: Math.random().toString(36).substr(2, 9), // temp id before refresh
-          nameEn,
-          nameZh,
-          descriptionEn,
-          descriptionZh,
-          price,
-          durationDays,
-          providerModelId: selectedModelId || null,
-          providerModel: selectedModelId ? providerModels.find((m) => m.id === selectedModelId) : null,
-          tokenLimit: isUnlimited ? null : tokenLimit,
-          isActive: true
+        // Refresh local view by appending the real database plan object returned from server
+        const mappedPlan = {
+          ...res.plan,
+          providerModel: selectedModelId ? providerModels.find((m) => m.id === selectedModelId) : null
         };
-        setPlans([newPlanObj, ...plans]);
-        // Reset form
-        setNameEn("");
-        setNameZh("");
-        setDescriptionEn("");
-        setDescriptionZh("");
-        setPrice(0);
-        setDurationDays(30);
-        setSelectedModelId("");
-        setIsUnlimited(true);
+        setPlans([mappedPlan, ...plans]);
+      }
+    });
+  };
+
+  const handleUpdatePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    if (!nameEn || !nameZh) {
+      alert("Name is required in both English and Chinese.");
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await updateSubscriptionPlan(providerId, editingPlan.id, {
+        nameEn,
+        nameZh,
+        descriptionEn,
+        descriptionZh,
+        price,
+        durationDays,
+        providerModelId: selectedModelId || undefined,
+        tokenLimit: isUnlimited ? null : tokenLimit
+      });
+
+      if (res?.error) {
+        alert(`Error: ${res.error}`);
+      } else if (res?.success && res.plan) {
+        alert("Subscription Plan updated successfully!");
+        const updatedPlan = {
+          ...res.plan,
+          providerModel: selectedModelId ? providerModels.find((m) => m.id === selectedModelId) : null
+        };
+        setPlans(plans.map((p) => (p.id === editingPlan.id ? updatedPlan : p)));
+        setEditingPlan(null);
       }
     });
   };
@@ -109,16 +155,31 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
           </h2>
           <p className="text-sm text-text-muted mt-1">Configure monthly or yearly packages for this provider.</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-brand-primary text-brand-primary-text font-semibold rounded-xl hover:opacity-90 active:scale-95 transition-all text-sm"
-        >
-          {showAddForm ? "Cancel" : "Add Plan"}
-        </button>
+        {!showAddForm && !editingPlan ? (
+          <button
+            onClick={openAddForm}
+            className="px-4 py-2 bg-brand-primary text-brand-primary-text font-semibold rounded-xl hover:opacity-90 active:scale-95 transition-all text-sm"
+          >
+            Add Plan
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              setShowAddForm(false);
+              setEditingPlan(null);
+            }}
+            className="px-4 py-2 border border-border-subtle text-text-main font-semibold rounded-xl hover:bg-bg-surface text-sm"
+          >
+            Cancel
+          </button>
+        )}
       </div>
 
-      {showAddForm && (
-        <form onSubmit={handleAddPlan} className="p-6 border-b border-border-subtle bg-bg-main/30 flex flex-col gap-4">
+      {(showAddForm || editingPlan) && (
+        <form onSubmit={editingPlan ? handleUpdatePlan : handleAddPlan} className="p-6 border-b border-border-subtle bg-bg-main/30 flex flex-col gap-4">
+          <h3 className="text-sm font-bold text-text-main">
+            {editingPlan ? `Edit Plan: ${editingPlan.nameZh}` : "Configure New Plan"}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* English Name */}
             <div className="flex flex-col gap-1">
@@ -249,7 +310,10 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
           <div className="flex justify-end gap-2 mt-2">
             <button
               type="button"
-              onClick={() => setShowAddForm(false)}
+              onClick={() => {
+                setShowAddForm(false);
+                setEditingPlan(null);
+              }}
               className="px-4 py-2 border border-border-subtle text-text-main font-semibold rounded-xl hover:bg-bg-surface text-sm"
             >
               Cancel
@@ -259,7 +323,7 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
               disabled={isPending}
               className="px-5 py-2 bg-brand-primary text-brand-primary-text font-semibold rounded-xl hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all text-sm"
             >
-              Create Subscription Plan
+              {isPending ? "Saving..." : (editingPlan ? "Update Plan" : "Create Plan")}
             </button>
           </div>
         </form>
@@ -296,6 +360,13 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
                     <p>{p.durationDays} Days validity</p>
                   </td>
                   <td className="px-6 py-4 text-right flex justify-end gap-2 items-center min-h-[58px]">
+                    <button
+                      onClick={() => openEditForm(p)}
+                      disabled={isPending}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-bg-surface-hover border border-border-subtle text-text-main hover:bg-border-subtle transition-all disabled:opacity-50"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => handleToggleActive(p.id, p.isActive)}
                       disabled={isPending}

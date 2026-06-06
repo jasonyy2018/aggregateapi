@@ -232,7 +232,7 @@ export async function addSubscriptionPlan(
   try {
     const prisma = await ensureAdmin();
 
-    await prisma.subscriptionPlan.create({
+    const plan = await prisma.subscriptionPlan.create({
       data: {
         providerId,
         nameEn: data.nameEn,
@@ -249,7 +249,46 @@ export async function addSubscriptionPlan(
 
     revalidatePath("/dashboard/admin/providers");
     revalidatePath(`/dashboard/admin/providers/${providerId}`);
-    return { success: true };
+    return { success: true, plan: JSON.parse(JSON.stringify(plan)) };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function updateSubscriptionPlan(
+  providerId: string,
+  planId: string,
+  data: {
+    nameEn: string;
+    nameZh: string;
+    descriptionEn?: string;
+    descriptionZh?: string;
+    price: number;
+    durationDays: number;
+    providerModelId?: string;
+    tokenLimit?: number | null;
+  }
+) {
+  try {
+    const prisma = await ensureAdmin();
+
+    const plan = await prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: {
+        nameEn: data.nameEn,
+        nameZh: data.nameZh,
+        descriptionEn: data.descriptionEn || null,
+        descriptionZh: data.descriptionZh || null,
+        price: data.price,
+        durationDays: data.durationDays,
+        providerModelId: data.providerModelId || null,
+        tokenLimit: data.tokenLimit === undefined ? null : data.tokenLimit
+      }
+    });
+
+    revalidatePath("/dashboard/admin/providers");
+    revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    return { success: true, plan: JSON.parse(JSON.stringify(plan)) };
   } catch (error: any) {
     return { error: error.message };
   }
@@ -287,5 +326,6 @@ export async function toggleSubscriptionPlan(providerId: string, planId: string,
     return { error: error.message };
   }
 }
+
 
 
