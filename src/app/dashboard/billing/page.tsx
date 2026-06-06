@@ -67,6 +67,16 @@ export default async function BillingPage() {
     };
   });
 
+  // 4. Fetch available subscription plans
+  const activePlans = await prisma.subscriptionPlan.findMany({
+    where: { isActive: true },
+    include: {
+      provider: true,
+      providerModel: true
+    },
+    orderBy: { price: "asc" }
+  });
+
   return (
     <BillingClient 
       initialBalance={user?.balance || 0} 
@@ -75,6 +85,7 @@ export default async function BillingPage() {
       referralCount={referralCount}
       referralEarnings={referralEarnings}
       subscriptions={JSON.parse(JSON.stringify(user?.subscriptions || []))}
+      availablePlans={JSON.parse(JSON.stringify(activePlans))}
     />
   );
 }

@@ -18,6 +18,7 @@ import {
   applyMarginToModel,
   updatePlatformSettings,
 } from "@/app/dashboard/admin/providers/actions";
+import { PlanManager } from "@/components/plan-manager";
 import { computeMargin, applyMargin } from "@/lib/pricing";
 
 // ----- Types mirroring server props -----
@@ -64,6 +65,7 @@ type ProviderView = {
   sortOrder: number;
   extraHeaders: Record<string, string> | null;
   models: ModelView[];
+  plans: any[];
 };
 
 const PROTOCOL_DEFAULTS: Record<ProviderProtocol, string> = {
@@ -445,6 +447,13 @@ export function AdminProvidersClient({
                       </table>
                     </div>
                   )}
+
+                  {/* Plan / Subscription Packages Manager */}
+                  <PlanManager
+                    providerId={p.id}
+                    providerModels={p.models}
+                    initialPlans={p.plans}
+                  />
                 </div>
               )}
             </div>

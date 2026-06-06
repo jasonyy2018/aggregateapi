@@ -216,3 +216,76 @@ export async function toggleUserSubscription(userId: string, subscriptionId: str
   }
 }
 
+export async function addSubscriptionPlan(
+  providerId: string,
+  data: {
+    nameEn: string;
+    nameZh: string;
+    descriptionEn?: string;
+    descriptionZh?: string;
+    price: number;
+    durationDays: number;
+    providerModelId?: string;
+    tokenLimit?: number | null;
+  }
+) {
+  try {
+    const prisma = await ensureAdmin();
+
+    await prisma.subscriptionPlan.create({
+      data: {
+        providerId,
+        nameEn: data.nameEn,
+        nameZh: data.nameZh,
+        descriptionEn: data.descriptionEn || null,
+        descriptionZh: data.descriptionZh || null,
+        price: data.price,
+        durationDays: data.durationDays,
+        providerModelId: data.providerModelId || null,
+        tokenLimit: data.tokenLimit === undefined ? null : data.tokenLimit,
+        isActive: true
+      }
+    });
+
+    revalidatePath("/dashboard/admin/providers");
+    revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function deleteSubscriptionPlan(providerId: string, planId: string) {
+  try {
+    const prisma = await ensureAdmin();
+
+    await prisma.subscriptionPlan.delete({
+      where: { id: planId }
+    });
+
+    revalidatePath("/dashboard/admin/providers");
+    revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function toggleSubscriptionPlan(providerId: string, planId: string, isActive: boolean) {
+  try {
+    const prisma = await ensureAdmin();
+
+    await prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: { isActive }
+    });
+
+    revalidatePath("/dashboard/admin/providers");
+    revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+

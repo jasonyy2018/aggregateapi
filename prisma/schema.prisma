@@ -124,6 +124,7 @@ model Provider {
 
   models         ProviderModel[]
   subscriptions  UserSubscription[]
+  plans          SubscriptionPlan[]
 }
 
 enum ProviderProtocol {
@@ -159,6 +160,7 @@ model ProviderModel {
 
   provider          Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   subscriptions     UserSubscription[]
+  plans             SubscriptionPlan[]
 
   @@unique([providerId, modelId])
   @@index([isEnabled])
@@ -217,21 +219,44 @@ model WikiSection {
 }
 
 model UserSubscription {
-  id              String         @id @default(cuid())
+  id              String            @id @default(cuid())
   userId          String
-  providerId      String?        // Target provider (optional)
-  providerModelId String?        // Target model (optional)
-  tokenLimit      Int?           // null means unlimited tokens
-  tokenUsed       Int            @default(0)
-  price           Float          @default(0.0)
+  providerId      String?           // Target provider (optional)
+  providerModelId String?           // Target model (optional)
+  planId          String?           // Target plan (optional)
+  tokenLimit      Int?              // null means unlimited tokens
+  tokenUsed       Int               @default(0)
+  price           Float             @default(0.0)
   startDate       DateTime
   endDate         DateTime
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        Provider?         @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerModel   ProviderModel?    @relation(fields: [providerModelId], references: [id], onDelete: Cascade)
+  plan            SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+}
+
+model SubscriptionPlan {
+  id              String         @id @default(cuid())
+  nameEn          String
+  nameZh          String
+  descriptionEn   String?
+  descriptionZh   String?
+  price           Float          @default(0.0)
+  durationDays    Int            @default(30)
+  providerId      String
+  providerModelId String?
+  tokenLimit      Int?           // null means unlimited
   isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider        Provider?      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider        Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
   providerModel   ProviderModel? @relation(fields: [providerModelId], references: [id], onDelete: Cascade)
+  userSubscriptions UserSubscription[]
 }
+
 

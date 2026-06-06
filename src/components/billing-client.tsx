@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import PaypalCheckout from "@/components/payment/paypal-checkout";
 import AlipayCheckout from "@/components/payment/alipay-checkout";
 import { Gift, Copy, Check, Users, DollarSign, Share2, UserCheck, Coins, Download } from "lucide-react";
-import { AVAILABLE_PLANS, buySubscription } from "@/app/dashboard/billing/actions";
+import { buySubscription } from "@/app/dashboard/billing/actions";
 
 export function BillingClient({ 
   initialBalance, 
@@ -13,7 +13,8 @@ export function BillingClient({
   referralCode,
   referralCount,
   referralEarnings,
-  subscriptions = []
+  subscriptions = [],
+  availablePlans = []
 }: { 
   initialBalance: number;
   history: any[];
@@ -21,14 +22,19 @@ export function BillingClient({
   referralCount: number;
   referralEarnings: number;
   subscriptions?: any[];
+  availablePlans?: any[];
 }) {
   const { t, locale } = useLang();
   const [amount, setAmount] = useState<number>(20);
   const [method, setMethod] = useState<"paypal" | "alipay">(locale === "zh" ? "alipay" : "paypal");
   const [purchasePending, setPurchasePending] = useState<string | null>(null);
 
+  const subList = Array.isArray(subscriptions) ? subscriptions : [];
+  const historyList = Array.isArray(history) ? history : [];
+  const availablePlansList = Array.isArray(availablePlans) ? availablePlans : [];
+
   const handleBuy = async (planId: string) => {
-    const plan = AVAILABLE_PLANS.find(p => p.id === planId);
+    const plan = availablePlansList.find(p => p.id === planId);
     if (!plan) return;
     const confirmMsg = locale === "zh" 
       ? `确认使用账户余额订购「${plan.nameZh}」（价格: $${plan.price.toFixed(2)}）吗？`
@@ -74,14 +80,14 @@ export function BillingClient({
   };
 
   const downloadBillingHistory = () => {
-    if (history.length === 0) return;
+    if (historyList.length === 0) return;
     
     const isZh = locale === "zh";
     const headers = isZh 
       ? "日期,类型,金额,状态\n" 
       : "Date,Type,Amount,Status\n";
       
-    const rows = history.map(tx => {
+    const rows = historyList.map(tx => {
       const date = tx.date.replace(/,/g, "");
       const type = tx.type.replace(/,/g, "");
       const amount = tx.amount.replace(/,/g, "");
@@ -201,7 +207,7 @@ export function BillingClient({
         <div className="bg-bg-surface border border-border-subtle rounded-2xl p-8 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold">{t.billingPage.history}</h2>
-            {history.length > 0 && (
+            {historyList.length > 0 && (
               <button
                 onClick={downloadBillingHistory}
                 className="px-3.5 py-1.5 bg-bg-main hover:bg-bg-surface-hover border border-border-subtle text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 hover:text-brand-primary"
@@ -212,12 +218,12 @@ export function BillingClient({
             )}
           </div>
           <div className="flex flex-col gap-4">
-            {history.length === 0 ? (
+            {historyList.length === 0 ? (
               <div className="py-12 text-center text-text-muted italic">
                  {t.billingPage.noTransactions}
               </div>
             ) : (
-              history.map((tx, i) => (
+              historyList.map((tx, i) => (
                 <div key={i} className="flex justify-between items-center py-2 border-b border-border-subtle last:border-0">
                   <div className="flex flex-col">
                     <span className="font-medium">
@@ -250,14 +256,14 @@ export function BillingClient({
         </p>
 
         {/* User's Active Subscriptions */}
-        {subscriptions.length > 0 && (
+        {subList.length > 0 && (
           <div className="mb-10">
             <h3 className="text-sm font-bold text-text-main uppercase tracking-wider mb-4 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
               {locale === "zh" ? "您已订购的套餐" : "Your Active Subscriptions"}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {subscriptions.map((sub: any) => {
+              {subList.map((sub: any) => {
                 const isExpired = new Date(sub.endDate) < new Date();
                 const isActive = sub.isActive && !isExpired;
                 if (!isActive) return null;
@@ -294,8 +300,8 @@ export function BillingClient({
 
         {/* Available Plans for purchase */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {AVAILABLE_PLANS.map((plan) => {
-            const hasSub = subscriptions.some((s: any) => s.provider?.slug === plan.providerSlug && s.isActive && new Date(s.endDate) > new Date());
+          {availablePlansList.map((plan) => {
+            const hasSub = subList.some((s: any) => s.providerId === plan.providerId && s.isActive && new Date(s.endDate) > new Date());
             return (
               <div key={plan.id} className="p-6 bg-bg-main/40 hover:bg-bg-main/70 border border-border-subtle rounded-2xl flex flex-col justify-between transition-colors shadow-inner">
                 <div>

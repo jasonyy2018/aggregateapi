@@ -38,7 +38,10 @@ export default async function AdminProvidersPage() {
     const [providers, settings] = await Promise.all([
       prisma.provider.findMany({
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        include: { models: { orderBy: [{ sortOrder: "asc" }, { modelId: "asc" }] } },
+        include: { 
+          models: { orderBy: [{ sortOrder: "asc" }, { modelId: "asc" }] },
+          plans: { include: { providerModel: true }, orderBy: { createdAt: "desc" } }
+        },
       }),
       getPlatformSettings(prisma),
     ]);
@@ -72,6 +75,25 @@ export default async function AdminProvidersPage() {
         sortOrder: m.sortOrder,
         capabilities: m.capabilities,
       })),
+      plans: p.plans.map((pl) => ({
+        id: pl.id,
+        nameEn: pl.nameEn,
+        nameZh: pl.nameZh,
+        descriptionEn: pl.descriptionEn,
+        descriptionZh: pl.descriptionZh,
+        price: pl.price,
+        durationDays: pl.durationDays,
+        providerId: pl.providerId,
+        providerModelId: pl.providerModelId,
+        tokenLimit: pl.tokenLimit,
+        isActive: pl.isActive,
+        createdAt: pl.createdAt,
+        providerModel: pl.providerModel ? {
+          id: pl.providerModel.id,
+          displayName: pl.providerModel.displayName,
+          modelId: pl.providerModel.modelId
+        } : null
+      }))
     }));
 
     settingsData = {
