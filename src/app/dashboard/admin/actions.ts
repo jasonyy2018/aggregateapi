@@ -133,3 +133,86 @@ export async function updateWikiSection(
     return { error: error.message };
   }
 }
+
+export async function getProvidersAndModels() {
+  try {
+    const prisma = await ensureAdmin();
+    const providers = await prisma.provider.findMany({
+      include: {
+        models: {
+          orderBy: { sortOrder: "asc" }
+        }
+      },
+      orderBy: { name: "asc" }
+    });
+    return { success: true, providers: JSON.parse(JSON.stringify(providers)) };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function addUserSubscription(
+  userId: string,
+  data: {
+    providerId?: string;
+    providerModelId?: string;
+    tokenLimit?: number | null;
+    price: number;
+    startDate: Date;
+    endDate: Date;
+  }
+) {
+  try {
+    const prisma = await ensureAdmin();
+
+    await prisma.userSubscription.create({
+      data: {
+        userId,
+        providerId: data.providerId || null,
+        providerModelId: data.providerModelId || null,
+        tokenLimit: data.tokenLimit === undefined ? null : data.tokenLimit,
+        price: data.price,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        isActive: true
+      }
+    });
+
+    revalidatePath(`/dashboard/admin/users/${userId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function deleteUserSubscription(userId: string, subscriptionId: string) {
+  try {
+    const prisma = await ensureAdmin();
+
+    await prisma.userSubscription.delete({
+      where: { id: subscriptionId }
+    });
+
+    revalidatePath(`/dashboard/admin/users/${userId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function toggleUserSubscription(userId: string, subscriptionId: string, isActive: boolean) {
+  try {
+    const prisma = await ensureAdmin();
+
+    await prisma.userSubscription.update({
+      where: { id: subscriptionId },
+      data: { isActive }
+    });
+
+    revalidatePath(`/dashboard/admin/users/${userId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+

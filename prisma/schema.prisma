@@ -27,6 +27,7 @@ model User {
   apiKeys       ApiKey[]
   usageLogs     UsageLog[]
   transactions  BillingTransaction[]
+  subscriptions UserSubscription[]
 
   referredBy    User?     @relation("Referrals", fields: [referredById], references: [id])
   referrals     User[]    @relation("Referrals")
@@ -122,6 +123,7 @@ model Provider {
   updatedAt      DateTime       @updatedAt
 
   models         ProviderModel[]
+  subscriptions  UserSubscription[]
 }
 
 enum ProviderProtocol {
@@ -156,6 +158,7 @@ model ProviderModel {
   updatedAt         DateTime @updatedAt
 
   provider          Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  subscriptions     UserSubscription[]
 
   @@unique([providerId, modelId])
   @@index([isEnabled])
@@ -212,3 +215,23 @@ model WikiSection {
   contentZh String   @db.Text
   updatedAt DateTime @updatedAt
 }
+
+model UserSubscription {
+  id              String         @id @default(cuid())
+  userId          String
+  providerId      String?        // Target provider (optional)
+  providerModelId String?        // Target model (optional)
+  tokenLimit      Int?           // null means unlimited tokens
+  tokenUsed       Int            @default(0)
+  price           Float          @default(0.0)
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        Provider?      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerModel   ProviderModel? @relation(fields: [providerModelId], references: [id], onDelete: Cascade)
+}
+

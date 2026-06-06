@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { generateImage, type ImageGenerationBody } from "@/lib/multimodal-gateway";
+import { chargeUserWithSubscription } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Image generation polls for up to 105s (35 × 3s); 120s allows network overhead
@@ -128,25 +129,14 @@ async function chargeUser(
   cost: number
 ) {
   try {
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { balance: { decrement: cost } },
-      }),
-      prisma.usageLog.create({
-        data: {
-          userId,
-          model: modelId,
-          provider: providerSlug,
-          tokens: totalTokens,
-          cost,
-        },
-      }),
-      prisma.apiKey.update({
-        where: { id: apiKeyId },
-        data: { lastUsedAt: new Date() },
-      }),
-    ]);
+    await chargeUserWithSubscription({
+      apiKeyId,
+      userId,
+      providerSlug,
+      modelId,
+      totalTokens,
+      cost
+    });
   } catch (e) {
     console.error("chargeUser failed:", e);
   }

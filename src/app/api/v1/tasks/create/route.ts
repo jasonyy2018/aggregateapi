@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { createVideoMusicTask, type TaskCreateBody } from "@/lib/multimodal-gateway";
+import { chargeUserWithSubscription } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Task creation itself is fast; polling is done client-side
@@ -123,25 +124,14 @@ async function chargeUser(
   cost: number
 ) {
   try {
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { balance: { decrement: cost } },
-      }),
-      prisma.usageLog.create({
-        data: {
-          userId,
-          model: modelId,
-          provider: providerSlug,
-          tokens: totalTokens,
-          cost,
-        },
-      }),
-      prisma.apiKey.update({
-        where: { id: apiKeyId },
-        data: { lastUsedAt: new Date() },
-      }),
-    ]);
+    await chargeUserWithSubscription({
+      apiKeyId,
+      userId,
+      providerSlug,
+      modelId,
+      totalTokens,
+      cost
+    });
   } catch (e) {
     console.error("chargeUser failed:", e);
   }

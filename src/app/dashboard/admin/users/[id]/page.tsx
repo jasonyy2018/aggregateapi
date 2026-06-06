@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { dictionaries } from "@/lib/i18n";
 import { DiscountEditor } from "@/components/discount-editor";
+import { SubscriptionManager } from "@/components/subscription-manager";
 
 export default async function AdminUserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,6 +50,13 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
       transactions: {
         orderBy: { createdAt: "desc" },
         take: 100
+      },
+      subscriptions: {
+        include: {
+          provider: true,
+          providerModel: true
+        },
+        orderBy: { createdAt: "desc" }
       }
     }
   });
@@ -112,6 +120,14 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
             success: t.adminPage.success,
             error: t.adminPage.error
           }}
+        />
+      </div>
+
+      {/* Monthly Subscriptions */}
+      <div>
+        <SubscriptionManager
+          userId={user.id}
+          initialSubscriptions={user.subscriptions}
         />
       </div>
 

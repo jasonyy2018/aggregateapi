@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { getRegistryEntry } from "@/lib/model-registry";
+import { chargeUserWithSubscription } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -223,25 +224,14 @@ async function chargeUser(
   cost: number
 ) {
   try {
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { balance: { decrement: cost } },
-      }),
-      prisma.usageLog.create({
-        data: {
-          userId,
-          model: modelId,
-          provider: providerSlug,
-          tokens: totalTokens,
-          cost,
-        },
-      }),
-      prisma.apiKey.update({
-        where: { id: apiKeyId },
-        data: { lastUsedAt: new Date() },
-      }),
-    ]);
+    await chargeUserWithSubscription({
+      apiKeyId,
+      userId,
+      providerSlug,
+      modelId,
+      totalTokens,
+      cost
+    });
   } catch (e) {
     console.error("chargeUser failed:", e);
   }
