@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { LandingClient } from "@/components/landing-client";
 import { cookies } from "next/headers";
+import { getPrisma } from "@/lib/prisma";
 
 export default async function Home(props: {
   searchParams: Promise<{ ref?: string }>;
@@ -25,10 +26,21 @@ export default async function Home(props: {
     }
   }
 
+  const prisma = getPrisma();
+  const activePlans = await prisma.subscriptionPlan.findMany({
+    where: { isActive: true },
+    include: {
+      provider: true,
+      providerModel: true
+    },
+    orderBy: { price: "asc" }
+  });
+
   return (
     <LandingClient
       isLoggedIn={!!session?.user}
       userEmail={session?.user?.email}
+      plans={JSON.parse(JSON.stringify(activePlans))}
     />
   );
 }
