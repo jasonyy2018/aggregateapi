@@ -5,23 +5,52 @@ import { useState, useEffect } from "react";
 import PaypalCheckout from "@/components/payment/paypal-checkout";
 import AlipayCheckout from "@/components/payment/alipay-checkout";
 import { Gift, Copy, Check, Users, DollarSign, Share2, UserCheck, Coins, Download } from "lucide-react";
+import { AVAILABLE_PLANS, buySubscription } from "@/app/dashboard/billing/actions";
 
 export function BillingClient({ 
   initialBalance, 
   history,
   referralCode,
   referralCount,
-  referralEarnings
+  referralEarnings,
+  subscriptions = []
 }: { 
   initialBalance: number;
   history: any[];
   referralCode: string;
   referralCount: number;
   referralEarnings: number;
+  subscriptions?: any[];
 }) {
   const { t, locale } = useLang();
   const [amount, setAmount] = useState<number>(20);
   const [method, setMethod] = useState<"paypal" | "alipay">(locale === "zh" ? "alipay" : "paypal");
+  const [purchasePending, setPurchasePending] = useState<string | null>(null);
+
+  const handleBuy = async (planId: string) => {
+    const plan = AVAILABLE_PLANS.find(p => p.id === planId);
+    if (!plan) return;
+    const confirmMsg = locale === "zh" 
+      ? `确认使用账户余额订购「${plan.nameZh}」（价格: $${plan.price.toFixed(2)}）吗？`
+      : `Are you sure you want to subscribe to "${plan.nameEn}" for $${plan.price.toFixed(2)} using your balance?`;
+      
+    if (!confirm(confirmMsg)) return;
+
+    setPurchasePending(planId);
+    try {
+      const res = await buySubscription(planId);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        alert(locale === "zh" ? "订购成功！" : "Successfully subscribed!");
+        window.location.reload();
+      }
+    } catch (e: any) {
+      alert(e.message || "Error processing purchase");
+    } finally {
+      setPurchasePending(null);
+    }
+  };
 
   const [referralLink, setReferralLink] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
@@ -208,6 +237,100 @@ export function BillingClient({
           </div>
         </div>
       </div>
+
+      {/* Monthly & Yearly Packages (包月/包年套餐订购) */}
+      <div className="bg-bg-surface border border-border-subtle rounded-3xl p-8 md:p-10 shadow-sm mb-12">
+        <h2 className="text-2xl font-bold text-text-main mb-2 tracking-tight flex items-center gap-2">
+          <span>📅</span> {locale === "zh" ? "包月与包年套餐" : "Monthly & Yearly Packages"}
+        </h2>
+        <p className="text-sm text-text-muted mb-8 leading-relaxed">
+          {locale === "zh" 
+            ? "使用您的账户余额直接订购特定服务商的不限量或限量套餐，尽享超值优惠。" 
+            : "Subscribe to unlimited or limited token packages for specific AI providers using your balance."}
+        </p>
+
+        {/* User's Active Subscriptions */}
+        {subscriptions.length > 0 && (
+          <div className="mb-10">
+            <h3 className="text-sm font-bold text-text-main uppercase tracking-wider mb-4 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              {locale === "zh" ? "您已订购的套餐" : "Your Active Subscriptions"}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {subscriptions.map((sub: any) => {
+                const isExpired = new Date(sub.endDate) < new Date();
+                const isActive = sub.isActive && !isExpired;
+                if (!isActive) return null;
+                
+                const coverage = sub.providerModel 
+                  ? `${sub.provider?.name || sub.providerId} / ${sub.providerModel.displayName || sub.providerModelId}`
+                  : `${sub.provider?.name || sub.providerId} (${locale === "zh" ? "全部模型" : "All Models"})`;
+                const quotaLimit = sub.tokenLimit === null 
+                  ? (locale === "zh" ? "不限量" : "Unlimited") 
+                  : sub.tokenLimit.toLocaleString();
+
+                return (
+                  <div key={sub.id} className="p-5 bg-bg-main border border-border-subtle rounded-2xl flex flex-col justify-between shadow-sm">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-bold text-text-main text-base">{coverage}</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-300">
+                          {locale === "zh" ? "生效中" : "Active"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-text-muted">
+                        {locale === "zh" ? "已用额度" : "Quota Used"}: <span className="font-semibold text-text-main font-mono">{sub.tokenUsed.toLocaleString()}</span> / {quotaLimit}
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-border-subtle/50 flex justify-between items-center text-xs text-text-muted">
+                      <span>{locale === "zh" ? "有效期至" : "Valid until"}: {new Date(sub.endDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Available Plans for purchase */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {AVAILABLE_PLANS.map((plan) => {
+            const hasSub = subscriptions.some((s: any) => s.provider?.slug === plan.providerSlug && s.isActive && new Date(s.endDate) > new Date());
+            return (
+              <div key={plan.id} className="p-6 bg-bg-main/40 hover:bg-bg-main/70 border border-border-subtle rounded-2xl flex flex-col justify-between transition-colors shadow-inner">
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="text-lg font-bold text-text-main">{locale === "zh" ? plan.nameZh : plan.nameEn}</h4>
+                    <span className="text-2xl font-extrabold text-brand-primary font-mono">${plan.price.toFixed(2)}</span>
+                  </div>
+                  <p className="text-sm text-text-muted mb-4 leading-relaxed min-h-[40px]">
+                    {locale === "zh" ? plan.descriptionZh : plan.descriptionEn}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-subtle/40">
+                  <span className="text-xs text-text-muted font-medium">
+                    {locale === "zh" ? `有效期: ${plan.durationDays} 天` : `Validity: ${plan.durationDays} Days`}
+                  </span>
+                  <button
+                    onClick={() => handleBuy(plan.id)}
+                    disabled={purchasePending !== null}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                      hasSub 
+                        ? "bg-bg-surface border border-border-subtle text-text-muted hover:text-brand-primary" 
+                        : "bg-brand-primary text-brand-primary-text hover:opacity-90 active:scale-95"
+                    }`}
+                  >
+                    {purchasePending === plan.id 
+                      ? (locale === "zh" ? "处理中..." : "Processing...") 
+                      : (hasSub ? (locale === "zh" ? "续费套餐" : "Renew Plan") : (locale === "zh" ? "立即购买" : "Buy Plan"))}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
 
       {/* Referral Card */}
       <div className="bg-bg-surface border border-border-subtle rounded-3xl p-8 md:p-10 shadow-lg relative overflow-hidden group">

@@ -9,10 +9,21 @@ export default async function BillingPage() {
 
   const prisma = getPrisma();
   
-  // 1. Fetch real balance and referral code
+  // 1. Fetch real balance, referral code, and subscriptions
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, balance: true, referralCode: true }
+    select: { 
+      id: true, 
+      balance: true, 
+      referralCode: true,
+      subscriptions: {
+        include: {
+          provider: true,
+          providerModel: true
+        },
+        orderBy: { createdAt: "desc" }
+      }
+    }
   });
 
   let referralCode = user?.referralCode || "";
@@ -44,15 +55,15 @@ export default async function BillingPage() {
 
   const history = transactions.map(t => {
     const isRefBonus = t.providerId?.startsWith("REF_BONUS_");
-    let displayType = t.type === 'TOPUP' ? 'Recharge' : 'API Usage';
+    let displayType = t.type === 'TOPUP' ? 'Recharge' : (t.type === 'SUBSCRIPTION' ? 'Subscription' : 'API Usage');
     if (isRefBonus) displayType = 'Referral Bonus';
 
     return {
       date: t.createdAt.toISOString().split('T')[0],
       type: displayType, 
-      amount: (t.type === 'TOPUP' || isRefBonus ? '+' : '-') + '$' + t.amount.toFixed(2),
+      amount: (t.amount > 0 ? '+' : '') + '$' + t.amount.toFixed(2),
       status: t.status, 
-      color: t.type === 'TOPUP' || isRefBonus ? 'text-green-500' : 'text-text-main'
+      color: t.amount > 0 ? 'text-green-500' : 'text-text-main'
     };
   });
 
@@ -63,6 +74,8 @@ export default async function BillingPage() {
       referralCode={referralCode}
       referralCount={referralCount}
       referralEarnings={referralEarnings}
+      subscriptions={JSON.parse(JSON.stringify(user?.subscriptions || []))}
     />
   );
 }
+
