@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getPrisma } from "@/lib/prisma";
 import { KeysClient } from "./keys-client";
 import { dictionaries } from "@/lib/i18n";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,11 @@ export default async function KeysPage() {
   const cookieStore = await cookies();
   const locale = cookieStore.get("NEXT_LOCALE")?.value === "zh" ? "zh" : "en";
   const t = dictionaries[locale];
+
+  const headersList = await headers();
+  const host = headersList.get("host") || "aapi.togomol.com";
+  const proto = headersList.get("x-forwarded-proto") || "https";
+  const apiEndpoint = `${proto}://${host}/api/v1`;
 
   let keys: any[] = [];
   try {
@@ -47,10 +52,11 @@ export default async function KeysPage() {
         </p>
         <div className="relative group">
           <code className="block p-4 rounded-xl bg-bg-main text-brand-primary font-mono text-sm border border-border-subtle shadow-inner">
-            https://aapi.togomol.com/api/v1
+            {apiEndpoint}
           </code>
         </div>
       </div>
     </div>
   );
 }
+
