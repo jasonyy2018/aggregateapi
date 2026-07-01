@@ -145,6 +145,7 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "seedance-2.0-480p-with-video-input": { upstreamModelId: "bytedance/seedance-2", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "480p" }, description: "Seedance 2.0 480p (Image-to-Video)" },
   "seedance-2.0-720p-with-video-input": { upstreamModelId: "bytedance/seedance-2", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p" }, description: "Seedance 2.0 720p (Image-to-Video)" },
   "bytedance/seedance-2-fast":          { upstreamModelId: "bytedance/seedance-2-fast", protocol: "kie-task-video", billing: "flat-rate", description: "Bytedance Seedance 2.0 Fast (Official KIE name)" },
+  "bytedance/seedance-2-mini":          { upstreamModelId: "bytedance/seedance-2-mini", protocol: "kie-task-video", billing: "flat-rate", description: "Bytedance Seedance 2 Mini" },
 
   // ── Kling 2.6 Motion Control ──
   "kling-2.6-motion-control-720p":  { upstreamModelId: "kling-2.6/motion-control", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p"  }, description: "Kling 2.6 Motion Control (720p)" },

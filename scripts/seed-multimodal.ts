@@ -42,6 +42,7 @@ const multimodalModels = [
   { id: "seedance-2.0-720p-with-video-input", displayName: "Seedance 2.0 720p (Image-to-Video)", capabilities: ["video"], cost: 0.125, price: 0.125 },
   { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (Text-to-Video)", capabilities: ["video"], cost: 0.095, price: 0.095 },
   { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (Image-to-Video)", capabilities: ["video"], cost: 0.057, price: 0.057 },
+  { id: "bytedance/seedance-2-mini", displayName: "Seedance 2 Mini", capabilities: ["video"], cost: 0.08, price: 0.10 },
 
   // Google Veo 3.1 series (Video)
   { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Veo 3.1 Text-to-Video 1080p", capabilities: ["video"], cost: 1.28, price: 1.28 },

@@ -662,6 +662,7 @@ export async function importProviderModels(providerId: string) {
         { id: "seedance-2.0-480p-no-video-input", displayName: "Seedance 2.0 480p (Text-to-Video)", capabilities: ["video"], costInputPer1k: 0.095 },
         { id: "seedance-2.0-480p-with-video-input", displayName: "Seedance 2.0 480p (Image-to-Video)", capabilities: ["video"], costInputPer1k: 0.057 },
         { id: "bytedance/seedance-2-fast", displayName: "Seedance 2.0 Fast", capabilities: ["video"], costInputPer1k: 0.12 },
+        { id: "bytedance/seedance-2-mini", displayName: "Seedance 2 Mini", capabilities: ["video"], costInputPer1k: 0.08, inputPricePer1k: 0.10 },
 
         // Google Veo 3.1 series (Kie.ai Video)
         { id: "google-veo-3.1-text-to-video-quality-1080p", displayName: "Veo 3.1 Text-to-Video 1080p", capabilities: ["video"], costInputPer1k: 1.28 },
