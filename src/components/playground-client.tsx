@@ -4,6 +4,29 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useLang } from "@/lib/lang-context";
 
+// Helper to extract error message from API response text
+function extractErrorMessage(text: string, defaultMsg: string): string {
+  try {
+    const parsed = JSON.parse(text);
+    const errObj = parsed?.error || parsed?.details;
+    if (typeof errObj === "object" && errObj !== null) {
+      return errObj.message || errObj.msg || JSON.stringify(errObj);
+    }
+    if (typeof errObj === "string") {
+      return errObj;
+    }
+    if (typeof parsed?.msg === "string") {
+      return parsed.msg;
+    }
+    if (typeof parsed?.message === "string") {
+      return parsed.message;
+    }
+    return defaultMsg;
+  } catch {
+    return defaultMsg;
+  }
+}
+
 type ModelItem = {
   id: string; // "providerSlug/modelId"
   displayName: string;
@@ -272,8 +295,7 @@ export function PlaygroundClient({
 
       if (!res.ok) {
         const text = await res.text();
-        let errMsg = "Failed to fetch response";
-        try { errMsg = JSON.parse(text)?.error?.message || errMsg; } catch { errMsg = `Server error (HTTP ${res.status})`; }
+        const errMsg = extractErrorMessage(text, `Server error (HTTP ${res.status})`);
         throw new Error(errMsg);
       }
 
@@ -363,8 +385,7 @@ export function PlaygroundClient({
 
       if (!res.ok) {
         const text = await res.text();
-        let errMsg = "Generation failed";
-        try { errMsg = JSON.parse(text)?.error?.message || JSON.parse(text)?.error || JSON.parse(text)?.details || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        const errMsg = extractErrorMessage(text, `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`);
         throw new Error(errMsg);
       }
 
@@ -445,8 +466,7 @@ export function PlaygroundClient({
 
       if (!res.ok) {
         const text = await res.text();
-        let errMsg = "Task creation failed";
-        try { errMsg = JSON.parse(text)?.error || JSON.parse(text)?.details || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        const errMsg = extractErrorMessage(text, `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`);
         throw new Error(errMsg);
       }
 
@@ -499,8 +519,7 @@ export function PlaygroundClient({
 
       if (!res.ok) {
         const text = await res.text();
-        let errMsg = "Task creation failed";
-        try { errMsg = JSON.parse(text)?.error || JSON.parse(text)?.details || errMsg; } catch { errMsg = `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`; }
+        const errMsg = extractErrorMessage(text, `Server error (HTTP ${res.status}): ${text.slice(0, 200)}`);
         throw new Error(errMsg);
       }
 
