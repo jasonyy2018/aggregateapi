@@ -619,9 +619,10 @@ export async function importProviderModels(providerId: string) {
         console.warn("Failed to fetch models dynamically from Kie.ai, falling back to static list:", err);
       }
 
-      if (upstreamModels.length === 0) {
-        // Pre-configured model list for Kie.ai
-        upstreamModels = [
+      // Kie.ai's dynamic /models endpoint typically only returns chat LLM models.
+      // We must always merge our pre-configured list of multimodal/async/Claude models
+      // so they are registered and available to users.
+      const staticKieModels: UpstreamModel[] = [
         // OpenAI
         { id: "gpt-4o", displayName: "GPT-4o", contextLength: 128000, costInputPer1k: 0.0025, costOutputPer1k: 0.010 },
         { id: "gpt-4o-mini", displayName: "GPT-4o-mini", contextLength: 128000, costInputPer1k: 0.00015, costOutputPer1k: 0.0006 },
@@ -676,7 +677,6 @@ export async function importProviderModels(providerId: string) {
         // Post-processing: upscale / extend operate on a prior KIE task_id
         { id: "grok-imagine-video-upscale", displayName: "Grok Imagine Video Upscale",  capabilities: ["video"], costInputPer1k: 0.010, inputPricePer1k: 0.013 },
         { id: "grok-imagine-video-extend",  displayName: "Grok Imagine Video Extend",   capabilities: ["video"], costInputPer1k: 0.015, inputPricePer1k: 0.020 },
-
 
         // Gemini 2.5 Flash / Pro (Direct Overrides)
         { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash", contextLength: 1048576, costInputPer1k: 0.000075, costOutputPer1k: 0.000300, inputPricePer1k: 0.000090, outputPricePer1k: 0.000750 },
@@ -766,8 +766,13 @@ export async function importProviderModels(providerId: string) {
         { id: "claude-opus-4.7", displayName: "Claude Opus 4.7", contextLength: 200000, costInputPer1k: 0.015, costOutputPer1k: 0.075, inputPricePer1k: 0.019, outputPricePer1k: 0.094 },
         { id: "claude-haiku-3-5", displayName: "Claude Haiku 3.5", contextLength: 200000, costInputPer1k: 0.0008, costOutputPer1k: 0.004, inputPricePer1k: 0.001, outputPricePer1k: 0.005 },
       ];
-    }
-  } else if (p.protocol === "OPENAI") {
+
+      for (const sm of staticKieModels) {
+        if (!upstreamModels.some(um => um.id === sm.id)) {
+          upstreamModels.push(sm);
+        }
+      }
+    } else if (p.protocol === "OPENAI") {
       const res = await fetch(`${base}/models`, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
