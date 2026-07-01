@@ -407,10 +407,22 @@ export async function createVideoMusicTask(args: {
   // Build input — registry patch provides defaults, body overrides them
   const effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
 
+  let parsedDuration: number | undefined = undefined;
+  if (body.duration !== undefined && body.duration !== null) {
+    if (typeof body.duration === "number") {
+      parsedDuration = body.duration;
+    } else if (typeof body.duration === "string") {
+      const num = parseFloat(body.duration);
+      if (!isNaN(num)) {
+        parsedDuration = num;
+      }
+    }
+  }
+
   const input: Record<string, any> = {
     prompt: body.prompt || undefined,
     aspect_ratio: body.aspect_ratio || undefined,
-    duration: body.duration || undefined,
+    duration: parsedDuration || undefined,
     image_url: body.image_url || undefined,
     image_urls: body.image_urls?.length ? body.image_urls : undefined,
     // HappyHorse reference-to-video: 1-9 reference images

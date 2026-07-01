@@ -130,6 +130,15 @@ export async function POST(req: Request) {
     // Merge inputPatch into body.input (client-provided values take priority over patch defaults)
     const mergedInput = { ...inputPatch, ...body.input };
 
+    if (mergedInput.duration !== undefined && mergedInput.duration !== null) {
+      if (typeof mergedInput.duration === "string") {
+        const num = parseFloat(mergedInput.duration);
+        if (!isNaN(num)) {
+          mergedInput.duration = num;
+        }
+      }
+    }
+
     const upstreamPayload = {
       model: upstreamModel,
       callBackUrl: body.callBackUrl,
