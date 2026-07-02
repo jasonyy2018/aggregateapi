@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
     // Check balance: require flat fee
     const discountRate = apiKey.user.discountRate ?? 1.0;
-    const finalFee = model.inputPricePer1k * discountRate;
+    const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k);
     if (user.balance < finalFee) {
       return openaiError("Insufficient balance for this task", "insufficient_balance", 402);
     }

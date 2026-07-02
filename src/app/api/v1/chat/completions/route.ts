@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       }
 
       const discountRate = apiKey.user.discountRate ?? 1.0;
-      const finalFee = model.inputPricePer1k * discountRate;
+      const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k);
 
       // Check balance (ADMIN users bypass this check)
       if (!isAdmin && user.balance < finalFee) {
@@ -321,11 +321,14 @@ export async function POST(req: Request) {
         const converted = anthropicStreamToOpenAI(claudeRes!.body, model.modelId);
         if (!isAdmin) {
           const est = estimatePromptTokens(body);
-          const outEst = Math.min(body.max_tokens ?? 512, 1024);
-          const cost = computeCost(est, outEst, model) * discountRateClaude;
-          void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, est + outEst, cost);
+          const outEst = body.max_tokens !== undefined ? Math.min(body.max_tokens, 4096) : 2048;
+          const cost = Math.max(
+            computeCost(est, outEst, model) * discountRateClaude,
+            computeCostFloor(est, outEst, model)
+          );
+          await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, est + outEst, cost);
         } else {
-          void prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
+          await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
         }
         return new Response(converted, {
           status: 200,
@@ -360,7 +363,10 @@ export async function POST(req: Request) {
         total: (claudeData?.usage?.input_tokens ?? 0) + (claudeData?.usage?.output_tokens ?? 0),
       };
       if (!isAdmin) {
-        const cost = computeCost(claudeUsage.input, claudeUsage.output, model) * discountRateClaude;
+        const cost = Math.max(
+          computeCost(claudeUsage.input, claudeUsage.output, model) * discountRateClaude,
+          computeCostFloor(claudeUsage.input, claudeUsage.output, model)
+        );
         await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, claudeUsage.total, cost);
       } else {
         await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
@@ -393,17 +399,23 @@ export async function POST(req: Request) {
       // and let future iterations parse the stream.
       if (!isAdmin) {
         const promptEstimate = estimatePromptTokens(body);
-        const outputEstimate = Math.min(body.max_tokens ?? 512, 1024);
-        const cost = computeCost(promptEstimate, outputEstimate, model) * discountRate;
-        void chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate + outputEstimate, cost);
+        const outputEstimate = body.max_tokens !== undefined ? Math.min(body.max_tokens, 4096) : 2048;
+        const cost = Math.max(
+          computeCost(promptEstimate, outputEstimate, model) * discountRate,
+          computeCostFloor(promptEstimate, outputEstimate, model)
+        );
+        await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, promptEstimate + outputEstimate, cost);
       } else {
-        void prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
+        await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } });
       }
       return response;
     }
 
     if (usage && !isAdmin) {
-      const cost = computeCost(usage.input, usage.output, model) * discountRate;
+      const cost = Math.max(
+        computeCost(usage.input, usage.output, model) * discountRate,
+        computeCostFloor(usage.input, usage.output, model)
+      );
       await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, usage.total, cost);
     } else {
       // Admin users or no usage data — just touch lastUsedAt
@@ -451,6 +463,17 @@ function computeCost(
   return (
     (promptTokens / 1000) * model.inputPricePer1k +
     (completionTokens / 1000) * model.outputPricePer1k
+  );
+}
+
+function computeCostFloor(
+  promptTokens: number,
+  completionTokens: number,
+  model: { costInputPer1k: number; costOutputPer1k: number }
+): number {
+  return (
+    (promptTokens / 1000) * model.costInputPer1k +
+    (completionTokens / 1000) * model.costOutputPer1k
   );
 }
 

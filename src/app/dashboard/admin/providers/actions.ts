@@ -835,7 +835,7 @@ export async function importProviderModels(providerId: string) {
         const prices =
           settings.autoApplyMargin && (costIn > 0 || costOut > 0)
             ? applyMargin(costIn, costOut, settings.defaultMarginPct)
-            : { inputPricePer1k: 0, outputPricePer1k: 0 };
+            : { inputPricePer1k: costIn, outputPricePer1k: costOut };
         if (inputPrice === undefined) inputPrice = prices.inputPricePer1k;
         if (outputPrice === undefined) outputPrice = prices.outputPricePer1k;
       }
@@ -852,8 +852,6 @@ export async function importProviderModels(providerId: string) {
           contextLength: m.contextLength ?? null,
           costInputPer1k: costIn,
           costOutputPer1k: costOut,
-          inputPricePer1k: inputPrice,
-          outputPricePer1k: outputPrice,
           capabilities: m.capabilities || [],
           ...(isKie ? { isEnabled: true } : {}),
         },

@@ -87,8 +87,12 @@ export async function POST(req: Request) {
 
     const promptEstimate = estimatePromptTokens(body);
     const stream = body.stream !== undefined ? !!body.stream : true;
-    const outputEstimate = stream ? Math.min(body.max_tokens ?? 1024, 2048) : 512;
-    const estimatedCost = ((promptEstimate / 1000) * inputPrice + (outputEstimate / 1000) * outputPrice) * discountRate;
+    const outputEstimate = stream
+      ? (body.max_tokens !== undefined ? Math.min(body.max_tokens, 4096) : 2048)
+      : 512;
+    const rawCostEst = ((promptEstimate / 1000) * inputPrice + (outputEstimate / 1000) * outputPrice) * discountRate;
+    const costFloorEst = (promptEstimate / 1000) * model.costInputPer1k + (outputEstimate / 1000) * model.costOutputPer1k;
+    const estimatedCost = Math.max(rawCostEst, costFloorEst);
 
     if (!isAdmin && user.balance < estimatedCost) {
       return anthropicError("Insufficient balance for this generation", "insufficient_balance", 402);
@@ -167,7 +171,9 @@ export async function POST(req: Request) {
     const data = await res!.json();
     const inputTokens = data?.usage?.input_tokens ?? promptEstimate;
     const outputTokens = data?.usage?.output_tokens ?? 0;
-    const finalCost = ((inputTokens / 1000) * inputPrice + (outputTokens / 1000) * outputPrice) * discountRate;
+    const rawCostActual = ((inputTokens / 1000) * inputPrice + (outputTokens / 1000) * outputPrice) * discountRate;
+    const costFloorActual = (inputTokens / 1000) * model.costInputPer1k + (outputTokens / 1000) * model.costOutputPer1k;
+    const finalCost = Math.max(rawCostActual, costFloorActual);
 
     await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, inputTokens, outputTokens, finalCost);
 
