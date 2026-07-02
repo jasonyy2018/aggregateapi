@@ -52,3 +52,22 @@ export async function getPlatformSettings(prisma: PrismaClient) {
   }
   return s;
 }
+
+export function parseGeminiOmniVideoId(id: string): { duration?: number; resolution?: string } {
+  if (!id.startsWith("gemini-omni-video-")) return {};
+  const parts = id.split("-");
+  let duration: number | undefined;
+  let resolution: string | undefined;
+
+  const durPart = parts.find(p => p.endsWith("s") && !isNaN(parseFloat(p)));
+  if (durPart) {
+    duration = parseFloat(durPart);
+  }
+
+  const resPart = parts.find(p => ["4k", "2k", "1k", "1080p", "720p", "480p"].includes(p.toLowerCase()));
+  if (resPart) {
+    resolution = resPart;
+  }
+
+  return { duration, resolution };
+}

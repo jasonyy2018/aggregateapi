@@ -398,6 +398,7 @@ export async function createVideoMusicTask(args: {
 
   // Use registry for model ID and inputPatch
   const { getRegistryEntry } = await import("@/lib/model-registry");
+  const { parseGeminiOmniVideoId } = await import("@/lib/pricing");
   const registryEntry = getRegistryEntry(upstreamModelId);
   const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
   const inputPatchFromRegistry = registryEntry?.inputPatch ?? {};
@@ -405,9 +406,20 @@ export async function createVideoMusicTask(args: {
   console.log(`[Kie.ai Task Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"${Object.keys(inputPatchFromRegistry).length ? ` + patch ${JSON.stringify(inputPatchFromRegistry)}` : ""}`);
 
   // Build input — registry patch provides defaults, body overrides them
-  const effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
-
+  let effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
   let parsedDuration: number | undefined = undefined;
+
+  // Extract defaults from model ID if it is a gemini-omni-video variant
+  if (upstreamModelId.startsWith("gemini-omni-video-")) {
+    const extracted = parseGeminiOmniVideoId(upstreamModelId);
+    if (extracted.duration !== undefined) {
+      parsedDuration = extracted.duration;
+    }
+    if (extracted.resolution !== undefined && !effectiveResolution) {
+      effectiveResolution = extracted.resolution;
+    }
+  }
+
   if (body.duration !== undefined && body.duration !== null) {
     if (typeof body.duration === "number") {
       parsedDuration = body.duration;

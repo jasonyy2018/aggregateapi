@@ -104,8 +104,20 @@ export async function POST(req: Request) {
         promptText = textItem?.text || "";
       }
 
+      // Calculate final fee using duration multiplier for video models
+      let durationMultiplier = 1.0;
+      if (isVideo) {
+        let d = 5.0; // default default
+        const { parseGeminiOmniVideoId } = await import("@/lib/pricing");
+        const extracted = parseGeminiOmniVideoId(model.modelId);
+        if (extracted.duration !== undefined) {
+          d = extracted.duration;
+        }
+        durationMultiplier = d;
+      }
+
       const discountRate = apiKey.user.discountRate ?? 1.0;
-      const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k);
+      const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k) * durationMultiplier;
 
       // Check balance (ADMIN users bypass this check)
       if (!isAdmin && user.balance < finalFee) {

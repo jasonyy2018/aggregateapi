@@ -102,13 +102,6 @@ export async function POST(req: Request) {
     }
     const { provider, model } = resolved;
 
-    // Check user balance: require flat fee billing
-    const discountRate = apiKey.user.discountRate ?? 1.0;
-    const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k);
-    if (user.balance < finalFee) {
-      return errorResponse("Insufficient balance for this task", 402);
-    }
-
     if (!provider.apiKeyCipher) {
       return errorResponse(`Provider '${provider.name}' has no API key configured`, 503);
     }
@@ -119,13 +112,10 @@ export async function POST(req: Request) {
     const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
     const upstreamUrl = `${cleanBase}/api/v1/jobs/createTask`;
 
-    // 4. Determine the upstream model ID and any input patch via the registry.
-    // The registry maps DB model IDs → upstream IDs + optional inputPatch fields.
+    // Determine the upstream model ID and any input patch via the registry.
     const registryEntry = getRegistryEntry(dbModelId);
     const upstreamModel = registryEntry?.upstreamModelId ?? dbModelId;
     const inputPatch = registryEntry?.inputPatch ?? {};
-
-    console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
 
     // Merge inputPatch into body.input (client-provided values take priority over patch defaults)
     const mergedInput = { ...inputPatch, ...body.input };
@@ -138,6 +128,34 @@ export async function POST(req: Request) {
         }
       }
     }
+
+    // Calculate final fee using duration multiplier for video models
+    let durationMultiplier = 1.0;
+    if (model.capabilities.includes("video")) {
+      let d = 5.0; // default default
+      const { parseGeminiOmniVideoId } = await import("@/lib/pricing");
+      const extracted = parseGeminiOmniVideoId(dbModelId);
+      if (extracted.duration !== undefined) {
+        d = extracted.duration;
+      }
+      const inputDuration = mergedInput.duration;
+      if (inputDuration !== undefined && inputDuration !== null) {
+        const parsed = typeof inputDuration === "number" ? inputDuration : parseFloat(inputDuration);
+        if (!isNaN(parsed) && parsed > 0) {
+          d = parsed;
+        }
+      }
+      durationMultiplier = d;
+    }
+
+    // Check user balance: require flat fee billing
+    const discountRate = apiKey.user.discountRate ?? 1.0;
+    const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k) * durationMultiplier;
+    if (user.balance < finalFee) {
+      return errorResponse("Insufficient balance for this task", 402);
+    }
+
+    console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
 
     const upstreamPayload = {
       model: upstreamModel,

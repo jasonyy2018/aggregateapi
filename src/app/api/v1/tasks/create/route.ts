@@ -49,9 +49,28 @@ export async function POST(req: Request) {
     }
     const { provider, model } = resolved;
 
+    // Calculate final fee using duration multiplier for video models
+    let durationMultiplier = 1.0;
+    if (model.capabilities.includes("video")) {
+      let d = 5.0; // default default
+      const { parseGeminiOmniVideoId } = await import("@/lib/pricing");
+      const extracted = parseGeminiOmniVideoId(model.modelId);
+      if (extracted.duration !== undefined) {
+        d = extracted.duration;
+      }
+      const inputDuration = body.duration;
+      if (inputDuration !== undefined && inputDuration !== null) {
+        const parsed = typeof inputDuration === "number" ? inputDuration : parseFloat(inputDuration);
+        if (!isNaN(parsed) && parsed > 0) {
+          d = parsed;
+        }
+      }
+      durationMultiplier = d;
+    }
+
     // Check balance: require flat fee
     const discountRate = apiKey.user.discountRate ?? 1.0;
-    const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k);
+    const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k) * durationMultiplier;
     if (user.balance < finalFee) {
       return openaiError("Insufficient balance for this task", "insufficient_balance", 402);
     }
