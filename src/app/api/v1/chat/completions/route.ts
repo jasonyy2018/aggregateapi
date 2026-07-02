@@ -176,7 +176,7 @@ export async function POST(req: Request) {
         });
 
         // Bill & log
-        await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, finalFee);
+        await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, Math.round(1000 * durationMultiplier), finalFee);
 
         // Seamless synchronous polling loop for up to 35 seconds to return the generated URL directly in chat!
         let taskState = "generating";

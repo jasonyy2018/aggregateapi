@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     });
 
     // 5. Bill & log (flat-rate per request, representing 1000 tokens)
-    await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, finalFee);
+    await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, Math.round(1000 * durationMultiplier), finalFee);
 
     return NextResponse.json({
       success: true,

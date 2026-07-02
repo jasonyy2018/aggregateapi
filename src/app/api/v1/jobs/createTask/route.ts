@@ -199,7 +199,7 @@ export async function POST(req: Request) {
     }
 
     // 5. Bill & log flat-rate charge (represents 1000 tokens in database pricing)
-    await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, 1000, finalFee);
+    await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, Math.round(1000 * durationMultiplier), finalFee);
 
     return NextResponse.json({
       code: 200,
