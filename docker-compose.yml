@@ -7,10 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: aggregateapi
-    ports:
-      # Restrict database port access to localhost only. Prevent public internet scanning/hacking.
-      # You can still connect via SSH tunnel if needed.
-      - "127.0.0.1:5432:5432"
+    # Completely removed ports mapping. Now db is 100% private and only accessible inside the docker network by the web service.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
