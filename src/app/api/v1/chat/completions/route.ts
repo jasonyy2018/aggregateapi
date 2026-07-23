@@ -220,7 +220,7 @@ export async function POST(req: Request) {
           content = `Failed to generate: ${failMsg || "Upstream generation failed"}`;
         } else {
           // Timeout: return Task ID so they can check it or watch progress in dashboard
-          content = `Your generation task is still processing. You can check its progress in your dashboard or poll this status:\n\n* **Task ID**: \`${taskId}\`\n* **Provider**: \`${provider.slug}\`\n* **Model**: \`${model.modelId}\`\n\n[View Task History](/dashboard/billing)`;
+          content = `Your generation task is still processing. You can check its progress in your dashboard or poll this status:\n\n* **Task ID**: \`${taskId}\`\n* **Model**: \`${model.modelId}\`\n\n[View Task History](/dashboard/billing)`;
         }
 
         return NextResponse.json({

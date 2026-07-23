@@ -265,8 +265,10 @@ async function safeJsonParse(res: Response, context: string): Promise<any> {
  * If the upstream is asynchronous (like Kie.ai's Flux/Midjourney), it polls internally
  * to provide a seamless synchronous response to the client.
  */
+import { getCleanDomainBase } from "@/lib/shared";
+
 export async function generateImage(args: {
-  provider: { baseUrl: string; protocol: string; slug: string; extraHeaders?: any };
+  provider: { baseUrl: string; slug: string; extraHeaders?: any };
   apiKey: string;
   upstreamModelId: string;
   body: ImageGenerationBody;
@@ -276,7 +278,7 @@ export async function generateImage(args: {
   const isKie = provider.slug.toLowerCase() === "kie" || base.includes("kie.ai");
 
   if (isKie) {
-    const cleanBase = base.replace(/\/v1$/, "");
+    const cleanBase = getCleanDomainBase(provider.baseUrl);
 
     // Use registry for model ID and inputPatch (falls back to identity if not in registry)
     const { getRegistryEntry } = await import("@/lib/model-registry");
@@ -394,7 +396,7 @@ export async function createVideoMusicTask(args: {
     throw new Error(`Asynchronous task creation is currently only supported for Kie.ai provider. '${provider.slug}' protocol is not supported.`);
   }
 
-  const cleanBase = base.replace(/\/v1$/, "");
+  const cleanBase = getCleanDomainBase(provider.baseUrl);
 
   // Use registry for model ID and inputPatch
   const { getRegistryEntry } = await import("@/lib/model-registry");
@@ -403,7 +405,7 @@ export async function createVideoMusicTask(args: {
   const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
   const inputPatchFromRegistry = registryEntry?.inputPatch ?? {};
 
-  console.log(`[Kie.ai Task Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"${Object.keys(inputPatchFromRegistry).length ? ` + patch ${JSON.stringify(inputPatchFromRegistry)}` : ""}`);
+  console.log(`[Task Gateway] Platform model "${upstreamModelId}" → Upstream "${kieModelId}"${Object.keys(inputPatchFromRegistry).length ? ` + patch ${JSON.stringify(inputPatchFromRegistry)}` : ""}`);
 
   // Build input — registry patch provides defaults, body overrides them
   let effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
@@ -471,19 +473,19 @@ export async function createVideoMusicTask(args: {
     body: JSON.stringify(payload),
   });
 
-  const data = await safeJsonParse(res, `Kie.ai createTask[${kieModelId}]`);
+  const data = await safeJsonParse(res, `createTask[${kieModelId}]`);
 
   if (data?.code && data.code !== 0 && data.code !== 200) {
-    throw new Error(`Kie.ai Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
+    throw new Error(`Upstream Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
   }
 
   if (!res.ok) {
-    throw new Error(`Kie.ai Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
+    throw new Error(`Upstream Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
   }
 
   const taskId = data?.data?.taskId;
   if (!taskId) {
-    throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
+    throw new Error(`Upstream did not return a taskId. Response: ${JSON.stringify(data)}`);
   }
 
   return taskId;
@@ -498,8 +500,7 @@ export async function queryTaskStatus(args: {
   taskId: string;
 }): Promise<UnifiedTaskStatus> {
   const { provider, apiKey, taskId } = args;
-  const base = provider.baseUrl.replace(/\/+$/, "");
-  const cleanBase = base.replace(/\/v1$/, "");
+  const cleanBase = getCleanDomainBase(provider.baseUrl);
 
   return queryKieTaskStatus({
     cleanBase,
@@ -528,13 +529,13 @@ async function queryKieTaskStatus(args: {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Kie.ai task query failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
+    throw new Error(`Upstream task query failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
   }
 
-  const result = await safeJsonParse(res, `Kie.ai recordInfo[${taskId}]`);
+  const result = await safeJsonParse(res, `recordInfo[${taskId}]`);
   const taskData = result?.data;
   if (!taskData) {
-    throw new Error(`Kie.ai returned empty job data for task: ${taskId}`);
+    throw new Error(`Upstream returned empty job data for task: ${taskId}`);
   }
 
   const rawState = taskData.state || "waiting";

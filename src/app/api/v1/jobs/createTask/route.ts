@@ -3,7 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { getRegistryEntry } from "@/lib/model-registry";
 import { chargeUserWithSubscription } from "@/lib/billing";
-import { resolveModel, kieError, chargeUser } from "@/lib/shared";
+import { resolveModel, kieError, chargeUser, getCleanDomainBase } from "@/lib/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,31 @@ export async function POST(req: Request) {
       } else {
         dbModelId = "google-nano-banana-2-1k";
       }
+    } else if (requestedModel === "nano-banana-pro") {
+      const res = String(body.input?.resolution || "1K").toUpperCase();
+      if (res === "4K") {
+        dbModelId = "google-nano-banana-pro-4k";
+      } else {
+        dbModelId = "google-nano-banana-pro-1-2k";
+      }
+    } else if (requestedModel === "gpt-image-1.5") {
+      const quality = String(body.input?.quality || "medium").toLowerCase();
+      const hasImageInput = Boolean(body.input?.image_url || body.input?.image_urls?.length);
+      if (hasImageInput) {
+        dbModelId = quality === "high" ? "gpt-image-1.5-image-to-image-high" : "gpt-image-1.5-image-to-image-medium";
+      } else {
+        dbModelId = quality === "high" ? "gpt-image-1.5-text-to-image-high" : "gpt-image-1.5-text-to-image-medium";
+      }
+    } else if (requestedModel === "gpt-image-2") {
+      const res = String(body.input?.resolution || "1K").toUpperCase();
+      const hasImageInput = Boolean(body.input?.image_url || body.input?.image_urls?.length);
+      if (res === "4K") {
+        dbModelId = hasImageInput ? "gpt-image-2-image-to-image-4k" : "gpt-image-2-text-to-image-4k";
+      } else if (res === "2K") {
+        dbModelId = hasImageInput ? "gpt-image-2-image-to-image-2k" : "gpt-image-2-text-to-image-2k";
+      } else {
+        dbModelId = hasImageInput ? "gpt-image-2-image-to-image-1k" : "gpt-image-2-text-to-image-1k";
+      }
     } else if (requestedModel === "grok-imagine/image-to-video") {
       const res = String(body.input?.resolution || "480p").toLowerCase();
       if (res === "720p") {
@@ -71,24 +96,6 @@ export async function POST(req: Request) {
       } else {
         dbModelId = hasFirstFrame ? "seedance-2.0-480p-with-video-input" : "seedance-2.0-480p-no-video-input";
       }
-    } else if (requestedModel === "gpt-image-2-text-to-image") {
-      const res = String(body.input?.resolution || "1K").toUpperCase();
-      if (res === "4K") {
-        dbModelId = "gpt-image-2-text-to-image-4k";
-      } else if (res === "2K") {
-        dbModelId = "gpt-image-2-text-to-image-2k";
-      } else {
-        dbModelId = "gpt-image-2-text-to-image-1k";
-      }
-    } else if (requestedModel === "gpt-image-2-image-to-image") {
-      const res = String(body.input?.resolution || "1K").toUpperCase();
-      if (res === "4K") {
-        dbModelId = "gpt-image-2-image-to-image-4k";
-      } else if (res === "2K") {
-        dbModelId = "gpt-image-2-image-to-image-2k";
-      } else {
-        dbModelId = "gpt-image-2-image-to-image-1k";
-      }
     }
 
     const resolved = await resolveModel(prisma, dbModelId);
@@ -98,13 +105,13 @@ export async function POST(req: Request) {
     const { provider, model } = resolved;
 
     if (!provider.apiKeyCipher) {
-      return kieError(`Provider '${provider.name}' has no API key configured`, 503);
+      return kieError("Model provider missing API key configuration", 503);
     }
 
     const upstreamKey = decryptSecret(provider.apiKeyCipher);
 
-    // 4. Forward payload to Kie.ai
-    const cleanBase = provider.baseUrl.replace(/\/v1$/, "").replace(/\/+$/, "");
+    // 4. Forward payload to upstream
+    const cleanBase = getCleanDomainBase(provider.baseUrl);
     const upstreamUrl = `${cleanBase}/api/v1/jobs/createTask`;
 
     // Determine the upstream model ID and any input patch via the registry.
@@ -150,7 +157,7 @@ export async function POST(req: Request) {
       return kieError("Insufficient balance for this task", 402);
     }
 
-    console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
+    console.log(`[Task Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
 
     const upstreamPayload = {
       model: upstreamModel,
@@ -168,14 +175,14 @@ export async function POST(req: Request) {
       body: JSON.stringify(upstreamPayload),
     });
 
-    // Safely parse response — Kie.ai may return HTML on error (e.g. 404), not JSON
+    // Safely parse response
     const rawText = await res.text();
     let data: any;
     try {
       data = JSON.parse(rawText);
     } catch {
       return kieError(
-        `Kie.ai returned non-JSON response (HTTP ${res.status}): ${rawText.slice(0, 300)}`,
+        `Upstream returned non-JSON response (HTTP ${res.status}): ${rawText.slice(0, 300)}`,
         res.status || 502
       );
     }
@@ -185,12 +192,12 @@ export async function POST(req: Request) {
     }
 
     if (data?.code && data.code !== 0 && data.code !== 200) {
-      return kieError(`Kie.ai Task Creation Failed: ${data.msg || JSON.stringify(data)}`, 400);
+      return kieError(`Task Creation Failed: ${data.msg || JSON.stringify(data)}`, 400);
     }
 
     const taskId = data?.data?.taskId;
     if (!taskId) {
-      return kieError(`Kie.ai did not return a taskId. Upstream response: ${JSON.stringify(data)}`, 500);
+      return kieError(`Upstream did not return a taskId. Response: ${JSON.stringify(data)}`, 500);
     }
 
     // 5. Bill & log flat-rate charge (represents 1000 tokens in database pricing)

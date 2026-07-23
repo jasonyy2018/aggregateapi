@@ -15,6 +15,25 @@ import { auth } from "@/auth";
 import { chargeUserWithSubscription } from "./billing";
 import type { OpenAIChatBody } from "./llm-gateway";
 
+/**
+ * Normalizes a provider's base URL to a clean root domain without trailing /v1 or /api paths.
+ * Prevents URL path duplication (e.g. /api/api/v1/jobs/createTask).
+ */
+export function getCleanDomainBase(baseUrl: string): string {
+  let clean = baseUrl.trim();
+  while (clean.endsWith("/")) {
+    clean = clean.slice(0, -1);
+  }
+  while (clean.endsWith("/v1") || clean.endsWith("/api")) {
+    if (clean.endsWith("/v1")) clean = clean.slice(0, -3);
+    if (clean.endsWith("/api")) clean = clean.slice(0, -4);
+    while (clean.endsWith("/")) {
+      clean = clean.slice(0, -1);
+    }
+  }
+  return clean;
+}
+
 // ─── Model Resolution ────────────────────────────────────────────────────────
 
 interface ResolvedModel {

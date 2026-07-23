@@ -57,7 +57,7 @@ export async function GET(req: Request) {
           id: m.modelId,
           object: "model",
           created: Math.floor(m.createdAt.getTime() / 1000),
-          owned_by: p.slug,
+          owned_by: "system",
           display_name: isNonLlm ? `${tag} ${m.displayName}` : m.displayName,
           context_length: m.contextLength,
           pricing: {
@@ -70,15 +70,13 @@ export async function GET(req: Request) {
         else llmModels.push(entry);
       }
 
-      // 2. Add provider-qualified modelId (e.g. "kie/gpt-4o") for explicit targeted routing
+      // 2. Add provider-qualified modelId (e.g. "kie-oai/bytedance/seedance-2-mini") for explicit targeted routing
       const qualifiedEntry = {
         id: `${p.slug}/${m.modelId}`,
         object: "model",
         created: Math.floor(m.createdAt.getTime() / 1000),
-        owned_by: p.slug,
-        display_name: isNonLlm
-          ? `${tag} ${m.displayName} (${p.name})`
-          : `${m.displayName} (${p.name})`,
+        owned_by: "system",
+        display_name: isNonLlm ? `${tag} ${m.displayName}` : m.displayName,
         context_length: m.contextLength,
         pricing: {
           prompt: m.inputPricePer1k,
