@@ -136,16 +136,15 @@ export async function GET(req: NextRequest) {
       },
 
       // ─── Async Task Create ───────────────────────────────────────────────
-      "/api/v1/jobs/createTask": {
+      "/api/v1/tasks/create": {
         post: {
-          summary: "Create Async Task (Image / Video / Music)",
+          summary: "Create Async Task (Video / Music)",
           description:
-            "Creates an asynchronous generation task for image, video, or music models. " +
-            "Returns a `taskId` to poll with `/api/v1/jobs/getTaskDetail`.\n\n" +
-            "**Image models:** flux-schnell, flux-dev, midjourney, gpt-image-2-image-to-image, nano-banana-2, etc.\n\n" +
+            "Creates an asynchronous generation task for video or music models. " +
+            "Returns a `taskId` to poll with `/api/v1/tasks/status?taskId=...&providerSlug=...`.\n\n" +
             "**Video models:** bytedance/seedance-2, grok-imagine/image-to-video, google-veo-3.1-*, kling, etc.\n\n" +
             "**Music models:** suno",
-          operationId: "jobs-create-task",
+          operationId: "tasks-create",
           tags: ["Async Tasks"],
           requestBody: {
             required: true,
@@ -153,58 +152,16 @@ export async function GET(req: NextRequest) {
               "application/json": {
                 schema: {
                   type: "object",
-                  required: ["model", "input"],
+                  required: ["model", "prompt"],
                   properties: {
-                    model: {
-                      type: "string",
-                      example: "gpt-image-2-image-to-image",
-                      description: "Model ID. For resolution-based models (nano-banana-2, gpt-image-2-image-to-image, seedance-2, etc.) pass the base name and set `input.resolution`.",
-                    },
-                    callBackUrl: { type: "string", format: "uri", description: "Optional webhook URL for task completion notification." },
-                    input: {
-                      type: "object",
-                      required: ["prompt"],
-                      properties: {
-                        prompt: { type: "string", example: "a majestic dragon flying over mountains" },
-                        input_urls: { type: "array", items: { type: "string", format: "uri" }, description: "Input image URLs for image-to-image or image-to-video models." },
-                        aspect_ratio: { type: "string", enum: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"], default: "16:9" },
-                        resolution: { type: "string", enum: ["480p", "720p", "1080p", "4K", "1K", "2K"], description: "Resolution tier for models that support it." },
-                        duration: { type: "string", example: "5s", description: "Video duration (e.g. '5s', '10s')" },
-                        image_url: { type: "string", format: "uri", description: "Single reference image URL (for video models)" },
-                      },
-                    },
-                  },
-                },
-                examples: {
-                  "GPT Image 2 Image-to-Image": {
-                    value: {
-                      model: "gpt-image-2-image-to-image",
-                      input: {
-                        prompt: "transform into a painting",
-                        input_urls: ["https://static.aiquickdraw.com/tools/example/1776782793756_wrogXTdd.png"],
-                        aspect_ratio: "1:1",
-                        resolution: "1K",
-                      },
-                    },
-                  },
-                  "Seedance 2.0 Text-to-Video": {
-                    value: {
-                      model: "bytedance/seedance-2",
-                      input: {
-                        prompt: "a cinematic shot of a dragon flying over mountains",
-                        aspect_ratio: "16:9",
-                        resolution: "720p",
-                        duration: "5s",
-                      },
-                    },
-                  },
-                  "Suno Music": {
-                    value: {
-                      model: "suno",
-                      input: {
-                        prompt: "an uplifting electronic pop track",
-                      },
-                    },
+                    model: { type: "string", example: "suno" },
+                    prompt: { type: "string", example: "an uplifting electronic pop track" },
+                    aspect_ratio: { type: "string", enum: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"], default: "16:9" },
+                    duration: { type: "number", example: 5, description: "Video duration in seconds" },
+                    image_url: { type: "string", format: "uri", description: "Single reference image URL (for video models)" },
+                    style: { type: "string", description: "Music style (for Suno)" },
+                    lyrics: { type: "string", description: "Lyrics (for Suno)" },
+                    instrumental: { type: "boolean", description: "Instrumental only (for Suno)" },
                   },
                 },
               },
@@ -218,12 +175,10 @@ export async function GET(req: NextRequest) {
                   schema: {
                     type: "object",
                     properties: {
-                      code: { type: "integer", example: 200 },
-                      msg: { type: "string", example: "success" },
-                      data: {
-                        type: "object",
-                        properties: { taskId: { type: "string", example: "task_xxx_123456" } },
-                      },
+                      success: { type: "boolean" },
+                      taskId: { type: "string" },
+                      modelId: { type: "string" },
+                      providerSlug: { type: "string" },
                     },
                   },
                 },
@@ -236,14 +191,15 @@ export async function GET(req: NextRequest) {
       },
 
       // ─── Async Task Status ───────────────────────────────────────────────
-      "/api/v1/jobs/getTaskDetail": {
+      "/api/v1/tasks/status": {
         get: {
           summary: "Query Async Task Status & Results",
-          description: "Poll task status after creating with `/api/v1/jobs/createTask`. Returns result URLs when state is `success`.",
-          operationId: "jobs-get-task-detail",
+          description: "Poll task status after creating with `/api/v1/tasks/create`. Returns result URLs when state is `success`.",
+          operationId: "tasks-status",
           tags: ["Async Tasks"],
           parameters: [
             { name: "taskId", in: "query", required: true, schema: { type: "string" }, example: "task_xxx_123456" },
+            { name: "providerSlug", in: "query", required: true, schema: { type: "string" }, example: "kie" },
           ],
           responses: {
             "200": {

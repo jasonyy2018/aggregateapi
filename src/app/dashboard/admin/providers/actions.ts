@@ -852,6 +852,8 @@ export async function importProviderModels(providerId: string) {
           contextLength: m.contextLength ?? null,
           costInputPer1k: costIn,
           costOutputPer1k: costOut,
+          inputPricePer1k: inputPrice,
+          outputPricePer1k: outputPrice,
           capabilities: m.capabilities || [],
           ...(isKie ? { isEnabled: true } : {}),
         },
@@ -875,6 +877,58 @@ export async function importProviderModels(providerId: string) {
     return {
       success: true,
       message: `Successfully synchronized ${synced} models for ${p.name}. Auto-applied ${(settings.defaultMarginPct * 100).toFixed(0)}% margin where cost was known. KIE models were automatically enabled!`,
+    };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix Pricing for existing models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fix pricing for ALL models across ALL providers.
+ * For any model with cost but no selling price (or price = 0 or price < cost),
+ * automatically apply the default platform margin so the platform is profitable.
+ *
+ * This can be called from the admin panel after importing models.
+ */
+export async function fixModelPrice() {
+  try {
+    const prisma = await ensureAdmin();
+    const settings = await getPlatformSettings(prisma);
+    const marginPct = settings.defaultMarginPct;
+
+    const allModels = await prisma.providerModel.findMany();
+    let fixed = 0;
+
+    for (const m of allModels) {
+      const updates: Record<string, number> = {};
+      let needsFix = false;
+
+      if (m.costInputPer1k > 0 && (m.inputPricePer1k <= 0 || m.inputPricePer1k < m.costInputPer1k)) {
+        updates.inputPricePer1k = Math.round(m.costInputPer1k * (1 + marginPct) * 10000) / 10000;
+        needsFix = true;
+      }
+      if (m.costOutputPer1k > 0 && (m.outputPricePer1k <= 0 || m.outputPricePer1k < m.costOutputPer1k)) {
+        updates.outputPricePer1k = Math.round(m.costOutputPer1k * (1 + marginPct) * 10000) / 10000;
+        needsFix = true;
+      }
+
+      if (needsFix) {
+        await prisma.providerModel.update({
+          where: { id: m.id },
+          data: updates,
+        });
+        fixed++;
+      }
+    }
+
+    revalidatePath("/dashboard/admin/providers");
+    return {
+      success: true,
+      message: `Fixed pricing for ${fixed} models (applied ${(marginPct * 100).toFixed(0)}% margin where cost was available).`,
     };
   } catch (err: any) {
     return { error: err.message };

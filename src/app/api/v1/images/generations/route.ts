@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { generateImage, type ImageGenerationBody } from "@/lib/multimodal-gateway";
 import { chargeUserWithSubscription } from "@/lib/billing";
+import { resolveModel, openaiError, chargeUser } from "@/lib/shared";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Image generation polls for up to 105s (35 × 3s); 120s allows network overhead
@@ -89,66 +90,9 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (err: any) {
     console.error("Image Gateway error:", err.message);
+    if (err.message === "insufficient_balance") {
+      return openaiError("Insufficient balance. Please top up your account.", "insufficient_balance", 402);
+    }
     return openaiError(err.message, "upstream_error", 502);
   }
-}
-
-// ----- helpers -----
-
-async function resolveModel(prisma: ReturnType<typeof getPrisma>, requested: string) {
-  // 1. Try "slug/modelId" form
-  const slashIdx = requested.indexOf("/");
-  if (slashIdx > 0) {
-    const slug = requested.slice(0, slashIdx);
-    const modelId = requested.slice(slashIdx + 1);
-    const prov = await prisma.provider.findUnique({ where: { slug } });
-    if (prov && prov.isEnabled) {
-      const m = await prisma.providerModel.findFirst({
-        where: { providerId: prov.id, modelId, isEnabled: true },
-      });
-      if (m) return { provider: prov, model: m };
-    }
-  }
-  // 2. Fallback: find first enabled model globally
-  const m = await prisma.providerModel.findFirst({
-    where: { modelId: requested, isEnabled: true, provider: { isEnabled: true } },
-    include: { provider: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-  if (m) return { provider: m.provider, model: m };
-  return null;
-}
-
-async function chargeUser(
-  prisma: ReturnType<typeof getPrisma>,
-  apiKeyId: string,
-  userId: string,
-  providerSlug: string,
-  modelId: string,
-  totalTokens: number,
-  cost: number
-) {
-  try {
-    await chargeUserWithSubscription({
-      apiKeyId,
-      userId,
-      providerSlug,
-      modelId,
-      totalTokens,
-      cost
-    });
-  } catch (e) {
-    console.error("chargeUser failed:", e);
-  }
-}
-
-function openaiError(message: string, type = "invalid_request_error", status = 400) {
-  return NextResponse.json({
-    error: {
-      message,
-      type,
-      param: null,
-      code: null
-    }
-  }, { status });
 }

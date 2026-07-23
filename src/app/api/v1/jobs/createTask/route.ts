@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { getRegistryEntry } from "@/lib/model-registry";
 import { chargeUserWithSubscription } from "@/lib/billing";
+import { resolveModel, kieError, chargeUser } from "@/lib/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     // 1. Auth: Bearer Token
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return errorResponse("Missing or invalid Authorization header", 401);
+      return kieError("Missing or invalid Authorization header", 401);
     }
     const token = authHeader.slice(7).trim();
     const apiKey = await prisma.apiKey.findUnique({
@@ -24,22 +25,22 @@ export async function POST(req: Request) {
       include: { user: true },
     });
     if (!apiKey || !apiKey.isActive) {
-      return errorResponse("Invalid or inactive API Key", 401);
+      return kieError("Invalid or inactive API Key", 401);
     }
 
     const user = apiKey.user;
     if (user.isBanned) {
-      return errorResponse("Your account has been suspended", 403);
+      return kieError("Your account has been suspended", 403);
     }
 
     // 2. Parse body
     const body = await req.json();
     const requestedModel = body?.model;
     if (!requestedModel) {
-      return errorResponse("Missing 'model' field", 400);
+      return kieError("Missing 'model' field", 400);
     }
     if (!body?.input?.prompt) {
-      return errorResponse("Missing 'input.prompt' field", 400);
+      return kieError("Missing 'input.prompt' field", 400);
     }
 
     // 3. Resolve model to database record based on resolution
@@ -71,9 +72,6 @@ export async function POST(req: Request) {
         dbModelId = hasFirstFrame ? "seedance-2.0-480p-with-video-input" : "seedance-2.0-480p-no-video-input";
       }
     } else if (requestedModel === "gpt-image-2-text-to-image") {
-      // Route to resolution-tiered DB model for correct billing.
-      // KIE constraint: aspect_ratio=auto (or omitted) only supports 1K;
-      // 1:1 aspect_ratio cannot be used with 4K.
       const res = String(body.input?.resolution || "1K").toUpperCase();
       if (res === "4K") {
         dbModelId = "gpt-image-2-text-to-image-4k";
@@ -83,9 +81,6 @@ export async function POST(req: Request) {
         dbModelId = "gpt-image-2-text-to-image-1k";
       }
     } else if (requestedModel === "gpt-image-2-image-to-image") {
-      // Route to resolution-tiered DB model for correct billing
-      // The upstream model ID will always be "gpt-image-2-image-to-image" (resolved via mapImageModel)
-      // Resolution is also forwarded in input.resolution to KIE as-is.
       const res = String(body.input?.resolution || "1K").toUpperCase();
       if (res === "4K") {
         dbModelId = "gpt-image-2-image-to-image-4k";
@@ -98,12 +93,12 @@ export async function POST(req: Request) {
 
     const resolved = await resolveModel(prisma, dbModelId);
     if (!resolved) {
-      return errorResponse(`Model '${requestedModel}' with resolved ID '${dbModelId}' is not available.`, 404);
+      return kieError(`Model '${requestedModel}' with resolved ID '${dbModelId}' is not available.`, 404);
     }
     const { provider, model } = resolved;
 
     if (!provider.apiKeyCipher) {
-      return errorResponse(`Provider '${provider.name}' has no API key configured`, 503);
+      return kieError(`Provider '${provider.name}' has no API key configured`, 503);
     }
 
     const upstreamKey = decryptSecret(provider.apiKeyCipher);
@@ -152,7 +147,7 @@ export async function POST(req: Request) {
     const discountRate = apiKey.user.discountRate ?? 1.0;
     const finalFee = Math.max(model.inputPricePer1k * discountRate, model.costInputPer1k) * durationMultiplier;
     if (user.balance < finalFee) {
-      return errorResponse("Insufficient balance for this task", 402);
+      return kieError("Insufficient balance for this task", 402);
     }
 
     console.log(`[KIE Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
@@ -179,23 +174,23 @@ export async function POST(req: Request) {
     try {
       data = JSON.parse(rawText);
     } catch {
-      return errorResponse(
+      return kieError(
         `Kie.ai returned non-JSON response (HTTP ${res.status}): ${rawText.slice(0, 300)}`,
         res.status || 502
       );
     }
 
     if (!res.ok) {
-      return errorResponse(`Upstream Task Creation Failed (HTTP ${res.status}): ${data?.msg || JSON.stringify(data)}`, res.status);
+      return kieError(`Upstream Task Creation Failed (HTTP ${res.status}): ${data?.msg || JSON.stringify(data)}`, res.status);
     }
 
     if (data?.code && data.code !== 0 && data.code !== 200) {
-      return errorResponse(`Kie.ai Task Creation Failed: ${data.msg || JSON.stringify(data)}`, 400);
+      return kieError(`Kie.ai Task Creation Failed: ${data.msg || JSON.stringify(data)}`, 400);
     }
 
     const taskId = data?.data?.taskId;
     if (!taskId) {
-      return errorResponse(`Kie.ai did not return a taskId. Upstream response: ${JSON.stringify(data)}`, 500);
+      return kieError(`Kie.ai did not return a taskId. Upstream response: ${JSON.stringify(data)}`, 500);
     }
 
     // 5. Bill & log flat-rate charge (represents 1000 tokens in database pricing)
@@ -210,64 +205,10 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error("Async Task Creation error:", err);
-    return errorResponse("Internal Server Error: " + err.message, 500);
-  }
-}
-
-// ----- helpers -----
-
-async function resolveModel(prisma: ReturnType<typeof getPrisma>, requested: string) {
-  // 1. Try "slug/modelId" form
-  const slashIdx = requested.indexOf("/");
-  if (slashIdx > 0) {
-    const slug = requested.slice(0, slashIdx);
-    const modelId = requested.slice(slashIdx + 1);
-    const prov = await prisma.provider.findUnique({ where: { slug } });
-    if (prov && prov.isEnabled) {
-      const m = await prisma.providerModel.findFirst({
-        where: { providerId: prov.id, modelId, isEnabled: true },
-      });
-      if (m) return { provider: prov, model: m };
+    console.error("Async Task Creation error:", err.message);
+    if (err.message === "insufficient_balance") {
+      return kieError("Insufficient balance. Please top up your account.", 402);
     }
+    return kieError("Internal Server Error: " + err.message, 500);
   }
-  // 2. Fallback: find first enabled model globally
-  const m = await prisma.providerModel.findFirst({
-    where: { modelId: requested, isEnabled: true, provider: { isEnabled: true } },
-    include: { provider: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-  if (m) return { provider: m.provider, model: m };
-  return null;
-}
-
-async function chargeUser(
-  prisma: ReturnType<typeof getPrisma>,
-  apiKeyId: string,
-  userId: string,
-  providerSlug: string,
-  modelId: string,
-  totalTokens: number,
-  cost: number
-) {
-  try {
-    await chargeUserWithSubscription({
-      apiKeyId,
-      userId,
-      providerSlug,
-      modelId,
-      totalTokens,
-      cost
-    });
-  } catch (e) {
-    console.error("chargeUser failed:", e);
-  }
-}
-
-function errorResponse(message: string, code = 400) {
-  return NextResponse.json({
-    code,
-    msg: message,
-    data: null,
-  }, { status: code });
 }

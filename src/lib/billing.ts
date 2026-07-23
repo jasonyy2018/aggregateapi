@@ -126,6 +126,17 @@ export async function chargeUserWithSubscription(params: ChargeParams) {
 
     // 3. Write updates inside transaction to avoid race conditions
     await prisma.$transaction(async (tx) => {
+      // Re-check balance inside transaction for atomicity
+      if (chargedAmount > 0) {
+        const currentUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { balance: true }
+        });
+        if (!currentUser || currentUser.balance < chargedAmount) {
+          throw new Error("insufficient_balance");
+        }
+      }
+
       if (activeSubscription && tokensDeductedFromSub > 0) {
         await tx.userSubscription.update({
           where: { id: activeSubscription.id },

@@ -8,11 +8,12 @@ declare global {
 
 export const getPrisma = (): PrismaClient => {
   if (!globalThis.prismaGlobal) {
-    const connectionString = process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/aggregateapi?schema=public";
-    
-    // Create a PG pool and the PrismaPg adapter
-    const pool = new Pool({ connectionString })
-    const adapter = new PrismaPg(pool)
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required");
+    }
+    const connectionString = process.env.DATABASE_URL;
+    const pool = new Pool({ connectionString, max: 20 });
+    const adapter = new PrismaPg(pool);
 
     globalThis.prismaGlobal = new PrismaClient({
       adapter, // Explicitly provide the adapter for Prisma 7

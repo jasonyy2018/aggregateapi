@@ -181,7 +181,10 @@ export async function POST(req: Request) {
 
 
   } catch (err: any) {
-    console.error("Claude Gateway error:", err);
+    console.error("Claude Gateway error:", err.message);
+    if (err.message === "insufficient_balance") {
+      return anthropicError("Insufficient balance. Please top up your account.", "insufficient_balance", 402);
+    }
     return anthropicError("Internal Server Error: " + err.message, "internal_server_error", 500);
   }
 }
@@ -251,6 +254,7 @@ async function chargeUser(
     });
   } catch (e) {
     console.error("chargeUser failed:", e);
+    throw e; // Re-throw so caller can handle insufficient_balance
   }
 }
 
