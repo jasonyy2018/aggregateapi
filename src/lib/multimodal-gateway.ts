@@ -333,7 +333,7 @@ export async function generateImage(args: {
       throw new Error(`Upstream did not return a taskId. Response: ${JSON.stringify(data)}`);
     }
 
-    const maxRetries = 18;       // 18 × 3s = 54s — fits within 60s OpenResty proxy_read_timeout
+    const maxRetries = 30;       // 30 × 3s = 90s — fits within Next.js maxDuration (120s) and covers heavy image generation tasks
     const pollIntervalMs = 3000; // 3s between polls
     for (let i = 0; i < maxRetries; i++) {
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
@@ -349,7 +349,7 @@ export async function generateImage(args: {
       }
     }
 
-    throw new Error("Image Generation Timeout (54s exceeded). The task may still be running — check task status in dashboard.");
+    throw new Error("Image Generation Timeout (90s exceeded). The task may still be running — check task status in dashboard.");
 
   }
 

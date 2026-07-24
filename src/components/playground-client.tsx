@@ -144,6 +144,83 @@ export function PlaygroundClient({
   const [isMusicLoading, setIsMusicLoading] = useState(false);
   const [musicError, setMusicError] = useState("");
 
+  // 7-day TTL helper: 7 days in milliseconds
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  // Load 7-day history from LocalStorage on initial client mount
+  useEffect(() => {
+    try {
+      const now = Date.now();
+
+      const savedChat = localStorage.getItem("pg_chat_history");
+      if (savedChat) {
+        const parsed = JSON.parse(savedChat);
+        if (Array.isArray(parsed)) {
+          setChatMessages(parsed.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS));
+        }
+      }
+
+      const savedImages = localStorage.getItem("pg_image_history");
+      if (savedImages) {
+        const parsed = JSON.parse(savedImages);
+        if (Array.isArray(parsed)) {
+          setImages(parsed.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS));
+        }
+      }
+
+      const savedVideos = localStorage.getItem("pg_video_history");
+      if (savedVideos) {
+        const parsed = JSON.parse(savedVideos);
+        if (Array.isArray(parsed)) {
+          setVideos(parsed.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS));
+        }
+      }
+
+      const savedMusic = localStorage.getItem("pg_music_history");
+      if (savedMusic) {
+        const parsed = JSON.parse(savedMusic);
+        if (Array.isArray(parsed)) {
+          setSongs(parsed.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load 7-day playground history:", e);
+    }
+  }, []);
+
+  // Save history to LocalStorage whenever state updates (automatically purging items older than 7 days)
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      const now = Date.now();
+      const valid = chatMessages.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS);
+      localStorage.setItem("pg_chat_history", JSON.stringify(valid));
+    }
+  }, [chatMessages]);
+
+  useEffect(() => {
+    if (images.length > 0) {
+      const now = Date.now();
+      const valid = images.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS);
+      localStorage.setItem("pg_image_history", JSON.stringify(valid));
+    }
+  }, [images]);
+
+  useEffect(() => {
+    if (videos.length > 0) {
+      const now = Date.now();
+      const valid = videos.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS);
+      localStorage.setItem("pg_video_history", JSON.stringify(valid));
+    }
+  }, [videos]);
+
+  useEffect(() => {
+    if (songs.length > 0) {
+      const now = Date.now();
+      const valid = songs.filter((item: any) => !item.createdAtMs || now - item.createdAtMs < SEVEN_DAYS_MS);
+      localStorage.setItem("pg_music_history", JSON.stringify(valid));
+    }
+  }, [songs]);
+
   // Scroll to bottom of chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -264,10 +341,11 @@ export function PlaygroundClient({
     e.preventDefault();
     if (!chatInput.trim() || !apiKey || isChatLoading) return;
 
-    const userMsg: ChatMessage = {
-      role: "user",
+    const userMsg = {
+      role: "user" as const,
       content: chatInput,
       timestamp: new Date().toLocaleTimeString(),
+      createdAtMs: Date.now(),
     };
 
     setChatMessages((prev) => [...prev, userMsg]);
@@ -308,6 +386,7 @@ export function PlaygroundClient({
           role: "assistant",
           content: assistantText,
           timestamp: new Date().toLocaleTimeString(),
+          createdAtMs: Date.now(),
         },
       ]);
     } catch (err: any) {
@@ -317,6 +396,7 @@ export function PlaygroundClient({
           role: "assistant",
           content: `⚠️ Error: ${err.message}`,
           timestamp: new Date().toLocaleTimeString(),
+          createdAtMs: Date.now(),
         },
       ]);
     } finally {
@@ -408,7 +488,7 @@ export function PlaygroundClient({
             prompt: imagePrompt,
             model: selectedImageModel,
             timestamp: new Date().toLocaleString(),
-            // We append a custom field for status so our gallery can render a loader
+            createdAtMs: Date.now(),
             status: "generating",
             providerSlug: data.providerSlug,
           } as any,
@@ -427,6 +507,7 @@ export function PlaygroundClient({
             prompt: imagePrompt,
             model: selectedImageModel,
             timestamp: new Date().toLocaleString(),
+            createdAtMs: Date.now(),
             status: "success",
           } as any,
           ...prev,
@@ -482,6 +563,7 @@ export function PlaygroundClient({
           taskId: data.taskId,
           providerSlug: data.providerSlug,
           timestamp: new Date().toLocaleString(),
+          createdAtMs: Date.now(),
         },
         ...prev,
       ]);
@@ -537,6 +619,7 @@ export function PlaygroundClient({
           lyrics: musicLyrics || undefined,
           style: musicStyle || undefined,
           timestamp: new Date().toLocaleString(),
+          createdAtMs: Date.now(),
         },
         ...prev,
       ]);
