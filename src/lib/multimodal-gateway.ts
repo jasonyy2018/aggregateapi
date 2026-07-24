@@ -246,10 +246,10 @@ async function safeJsonParse(res: Response, context: string): Promise<any> {
     const trimmed = text.trimStart();
     let hint: string;
     if (trimmed.startsWith("<")) {
-      if (res.status === 502) hint = "Bad Gateway — Kie.ai is temporarily unreachable. Please try again in a moment.";
-      else if (res.status === 503) hint = "Service Unavailable — Kie.ai is under maintenance. Please try again later.";
-      else if (res.status === 504) hint = "Gateway Timeout — Kie.ai did not respond in time.";
-      else hint = `Kie.ai returned an HTML error page (HTTP ${res.status}). The API may be temporarily down.`;
+      if (res.status === 502) hint = "Bad Gateway — Upstream service is temporarily unreachable. Please try again in a moment.";
+      else if (res.status === 503) hint = "Service Unavailable — Upstream service is under maintenance. Please try again later.";
+      else if (res.status === 504) hint = "Gateway Timeout — Upstream service did not respond in time.";
+      else hint = `Upstream returned an HTML error page (HTTP ${res.status}). The API may be temporarily down.`;
     } else {
       hint = trimmed.slice(0, 200);
     }
@@ -262,7 +262,7 @@ async function safeJsonParse(res: Response, context: string): Promise<any> {
 /**
  * 1. Synchronous Image Generation.
  * Maps the standard request to the upstream API and formats back to OpenAI shape.
- * If the upstream is asynchronous (like Kie.ai's Flux/Midjourney), it polls internally
+ * If the upstream is asynchronous, it polls internally
  * to provide a seamless synchronous response to the client.
  */
 import { getCleanDomainBase } from "@/lib/shared";
@@ -286,7 +286,7 @@ export async function generateImage(args: {
     const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
     const inputPatch = registryEntry?.inputPatch ?? {};
 
-    console.log(`[Kie.ai Image Gateway] Platform model "${upstreamModelId}" → Kie.ai "${kieModelId}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
+    console.log(`[Image Gateway] Platform model "${upstreamModelId}" → Upstream "${kieModelId}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
 
     // Build base input from prompt + size
     const size = body.size || "1024x1024";
@@ -318,23 +318,23 @@ export async function generateImage(args: {
       body: JSON.stringify(payload),
     });
 
-    const data = await safeJsonParse(res, `Kie.ai createTask[${kieModelId}]`);
+    const data = await safeJsonParse(res, `createTask[${kieModelId}]`);
 
     if (data?.code && data.code !== 0 && data.code !== 200) {
-      throw new Error(`Kie.ai Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
+      throw new Error(`Upstream Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
     }
 
     if (!res.ok) {
-      throw new Error(`Kie.ai Image Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
+      throw new Error(`Upstream Image Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
     }
 
     const taskId = data?.data?.taskId;
     if (!taskId) {
-      throw new Error(`Kie.ai did not return a taskId. Response: ${JSON.stringify(data)}`);
+      throw new Error(`Upstream did not return a taskId. Response: ${JSON.stringify(data)}`);
     }
 
-    const maxRetries = 35;       // 35 × 3s = 105s — fits within the 120s route maxDuration
-    const pollIntervalMs = 3000; // 3s between polls (GPT Image 2 typically takes 60–90s)
+    const maxRetries = 18;       // 18 × 3s = 54s — fits within 60s OpenResty proxy_read_timeout
+    const pollIntervalMs = 3000; // 3s between polls
     for (let i = 0; i < maxRetries; i++) {
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
       const status = await queryKieTaskStatus({ cleanBase, apiKey, taskId, extraHeaders: provider.extraHeaders });
@@ -345,11 +345,11 @@ export async function generateImage(args: {
         };
       }
       if (status.state === "fail") {
-        throw new Error(`Kie.ai Image Generation Failed: ${status.failMsg || "Unknown error"}`);
+        throw new Error(`Image Generation Failed: ${status.failMsg || "Unknown error"}`);
       }
     }
 
-    throw new Error("Kie.ai Image Generation Timeout (105s exceeded). The task may still be running — check task status in dashboard.");
+    throw new Error("Image Generation Timeout (54s exceeded). The task may still be running — check task status in dashboard.");
 
   }
 

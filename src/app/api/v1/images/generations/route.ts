@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 
     if (!provider.apiKeyCipher) {
       return openaiError(
-        `Provider '${provider.name}' has no API key configured`,
+        "Model provider missing API key configuration",
         "api_key_missing",
         503
       );
