@@ -96,6 +96,18 @@ export async function POST(req: Request) {
     // 5. Bill & log (flat-rate per request, representing 1000 tokens)
     await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, Math.round(1000 * durationMultiplier), finalFee);
 
+    // Save task to TaskLog in database for 7-day history persistence
+    await prisma.taskLog.create({
+      data: {
+        userId: user.id,
+        taskId,
+        model: requestedModel || model.modelId,
+        provider: provider.slug,
+        prompt: body.prompt || "",
+        status: "generating",
+      },
+    }).catch((e) => console.error("Failed to save TaskLog:", e));
+
     return NextResponse.json({
       success: true,
       taskId,

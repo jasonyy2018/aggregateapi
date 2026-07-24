@@ -147,7 +147,10 @@ export function PlaygroundClient({
   // 7-day TTL helper: 7 days in milliseconds
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-  // Load 7-day history from LocalStorage on initial client mount
+  // 🔍 Global History Search Query
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Load 7-day history from LocalStorage + Server DB on initial client mount
   useEffect(() => {
     try {
       const now = Date.now();
@@ -186,7 +189,123 @@ export function PlaygroundClient({
     } catch (e) {
       console.error("Failed to load 7-day playground history:", e);
     }
-  }, []);
+
+    // Fetch server-side task history (tasks & chats created in the last 7 days)
+    const fetchServerHistory = async () => {
+      try {
+        const headers: Record<string, string> = {};
+        if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+        const res = await fetch("/api/v1/tasks/history", { headers });
+        if (res.ok) {
+          const data = await res.json();
+
+          // Merge server chats
+          if (data.chats && Array.isArray(data.chats)) {
+            const serverChats = data.chats.flatMap((c: any) => [
+              {
+                role: "user" as const,
+                content: c.userPrompt,
+                timestamp: c.timestamp,
+                createdAtMs: c.createdAtMs,
+              },
+              {
+                role: "assistant" as const,
+                content: c.assistantMsg,
+                timestamp: c.timestamp,
+                createdAtMs: c.createdAtMs,
+              },
+            ]);
+            if (serverChats.length > 0) {
+              setChatMessages((prev) => {
+                const existingKeys = new Set(prev.map((m) => `${m.role}:${m.content}:${m.timestamp}`));
+                const newChats = serverChats.filter((sc: any) => !existingKeys.has(`${sc.role}:${sc.content}:${sc.timestamp}`));
+                return [...newChats, ...prev];
+              });
+            }
+          }
+
+          if (data.success && Array.isArray(data.tasks)) {
+            const serverTasks = data.tasks;
+
+            // Merge server video tasks
+            const serverVideos = serverTasks
+              .filter((t: any) => t.model.includes("video") || t.model.includes("seedance") || t.model.includes("veo") || t.model.includes("kling") || t.model.includes("hailuo") || t.model.includes("happyhorse") || t.model.includes("wan"))
+              .map((t: any) => ({
+                id: t.taskId,
+                taskId: t.taskId,
+                prompt: t.prompt,
+                model: t.model,
+                status: t.status,
+                url: t.url,
+                providerSlug: t.providerSlug,
+                failMsg: t.failMsg,
+                timestamp: t.timestamp,
+                createdAtMs: t.createdAtMs,
+              }));
+
+            if (serverVideos.length > 0) {
+              setVideos((prev) => {
+                const existingTaskIds = new Set(prev.map((v) => v.taskId || v.id));
+                const newItems = serverVideos.filter((sv: any) => !existingTaskIds.has(sv.taskId));
+                return [...newItems, ...prev];
+              });
+            }
+
+            // Merge server music tasks
+            const serverMusic = serverTasks
+              .filter((t: any) => t.model.includes("music") || t.model.includes("suno"))
+              .map((t: any) => ({
+                id: t.taskId,
+                taskId: t.taskId,
+                prompt: t.prompt,
+                model: t.model,
+                status: t.status,
+                url: t.url,
+                providerSlug: t.providerSlug,
+                failMsg: t.failMsg,
+                timestamp: t.timestamp,
+                createdAtMs: t.createdAtMs,
+              }));
+
+            if (serverMusic.length > 0) {
+              setSongs((prev) => {
+                const existingTaskIds = new Set(prev.map((s) => s.taskId || s.id));
+                const newItems = serverMusic.filter((sm: any) => !existingTaskIds.has(sm.taskId));
+                return [...newItems, ...prev];
+              });
+            }
+
+            // Merge server image tasks
+            const serverImages = serverTasks
+              .filter((t: any) => t.model.includes("image") || t.model.includes("flux") || t.model.includes("midjourney") || t.model.includes("nano-banana") || t.model.includes("grok-imagine"))
+              .map((t: any) => ({
+                id: t.taskId,
+                prompt: t.prompt,
+                model: t.model,
+                status: t.status,
+                url: t.url,
+                providerSlug: t.providerSlug,
+                failMsg: t.failMsg,
+                timestamp: t.timestamp,
+                createdAtMs: t.createdAtMs,
+              }));
+
+            if (serverImages.length > 0) {
+              setImages((prev) => {
+                const existingTaskIds = new Set(prev.map((img: any) => img.id));
+                const newItems = serverImages.filter((si: any) => !existingTaskIds.has(si.id));
+                return [...newItems, ...prev];
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch server task history:", e);
+      }
+    };
+
+    fetchServerHistory();
+  }, [apiKey]);
 
   // Save history to LocalStorage whenever state updates (automatically purging items older than 7 days)
   useEffect(() => {
@@ -633,6 +752,36 @@ export function PlaygroundClient({
     }
   };
 
+  const query = searchQuery.trim().toLowerCase();
+
+  const filteredChatMessages = query
+    ? chatMessages.filter((m) => m.content.toLowerCase().includes(query))
+    : chatMessages;
+
+  const filteredImages = query
+    ? images.filter((img: any) =>
+        (img.prompt || "").toLowerCase().includes(query) ||
+        (img.model || "").toLowerCase().includes(query)
+      )
+    : images;
+
+  const filteredVideos = query
+    ? videos.filter((v) =>
+        (v.prompt || "").toLowerCase().includes(query) ||
+        (v.model || "").toLowerCase().includes(query) ||
+        (v.status || "").toLowerCase().includes(query)
+      )
+    : videos;
+
+  const filteredSongs = query
+    ? songs.filter((s) =>
+        (s.prompt || "").toLowerCase().includes(query) ||
+        (s.model || "").toLowerCase().includes(query) ||
+        (s.style || "").toLowerCase().includes(query) ||
+        (s.lyrics || "").toLowerCase().includes(query)
+      )
+    : songs;
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12 animate-fade-in">
       {/* 👑 Dashboard Header */}
@@ -682,30 +831,55 @@ export function PlaygroundClient({
         </div>
       )}
 
-      {/* 💻 Tab Switcher */}
-      <div className="flex flex-wrap border-b border-border-subtle gap-2">
-        {[
-          { id: "chat", label: locale === "zh" ? "💬 语言对话" : "💬 Dialogue", desc: "GPT, Claude, DeepSeek" },
-          { id: "image", label: locale === "zh" ? "🎨 AI 绘画" : "🎨 AI Painting", desc: "Flux, Midjourney, DALL-E" },
-          { id: "video", label: locale === "zh" ? "🎬 AI 视频" : "🎬 AI Video", desc: "Kling, Runway" },
-          { id: "music", label: locale === "zh" ? "🎵 AI 音乐" : "🎵 AI Music", desc: "Suno, Udio" },
-        ].map((tab) => {
-          const active = activeTab === tab.id;
-          return (
+      {/* 💻 Tab Switcher & 🔍 7-Day Search Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border-subtle pb-2">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "chat", label: locale === "zh" ? "💬 语言对话" : "💬 Dialogue", desc: "GPT, Claude, DeepSeek" },
+            { id: "image", label: locale === "zh" ? "🎨 AI 绘画" : "🎨 AI Painting", desc: "Flux, Midjourney, DALL-E" },
+            { id: "video", label: locale === "zh" ? "🎬 AI 视频" : "🎬 AI Video", desc: "Kling, Runway" },
+            { id: "music", label: locale === "zh" ? "🎵 AI 音乐" : "🎵 AI Music", desc: "Suno, Udio" },
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex flex-col items-start px-6 py-3 rounded-t-2xl border-t border-x transition-all shrink-0 ${
+                  active
+                    ? "bg-bg-surface border-border-subtle text-brand-primary shadow-[0_-4px_12px_rgba(0,0,0,0.02)] font-bold"
+                    : "border-transparent text-text-muted hover:text-text-main hover:bg-bg-surface-hover"
+                }`}
+              >
+                <span className="text-base font-bold">{tab.label}</span>
+                <span className="text-2xs opacity-60 mt-0.5">{tab.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 🔍 Global 7-Day History Search Bar */}
+        <div className="relative w-full lg:w-80 pb-2 lg:pb-0">
+          <input
+            type="text"
+            placeholder={
+              locale === "zh"
+                ? "🔍 搜索 7 天历史 (提示词/模型)..."
+                : "🔍 Search 7-day history..."
+            }
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-bg-surface border border-border-subtle rounded-xl px-4 py-2 text-sm text-text-main placeholder-text-muted focus:outline-none focus:border-brand-primary transition-all shadow-sm"
+          />
+          {searchQuery && (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex flex-col items-start px-6 py-4 rounded-t-2xl border-t border-x transition-all shrink-0 ${
-                active
-                  ? "bg-bg-surface border-border-subtle text-brand-primary shadow-[0_-4px_12px_rgba(0,0,0,0.02)]"
-                  : "border-transparent text-text-muted hover:text-text-main hover:bg-bg-surface-hover"
-              }`}
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs bg-bg-surface-hover px-1.5 py-0.5 rounded-full text-text-muted hover:text-text-main"
             >
-              <span className="text-base font-bold">{tab.label}</span>
-              <span className="text-2xs opacity-60 mt-0.5">{tab.desc}</span>
+              ✕
             </button>
-          );
-        })}
+          )}
+        </div>
       </div>
 
       {/* 📦 Tab Content Panels */}
@@ -738,15 +912,17 @@ export function PlaygroundClient({
 
             {/* Chat Messages */}
             <div className="flex-1 min-h-[350px] max-h-[500px] overflow-y-auto border border-border-subtle rounded-2xl p-6 bg-bg-surface-hover/30 flex flex-col gap-4">
-              {chatMessages.length === 0 ? (
+              {filteredChatMessages.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-text-muted gap-2 py-12">
                   <span className="text-4xl">💬</span>
                   <p className="text-sm font-medium">
-                    {locale === "zh" ? "在这里开始与选中的大模型对话..." : "Start conversing with the selected AI model..."}
+                    {searchQuery
+                      ? (locale === "zh" ? "未搜索到匹配的对话记录" : "No matching chat conversations found")
+                      : (locale === "zh" ? "在这里开始与选中的大模型对话..." : "Start conversing with the selected AI model...")}
                   </p>
                 </div>
               ) : (
-                chatMessages.map((msg, index) => {
+                filteredChatMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
                   return (
                     <div
@@ -902,16 +1078,18 @@ export function PlaygroundClient({
                   {locale === "zh" ? "生成的画廊" : "Generated Gallery"}
                 </h4>
 
-                {images.length === 0 ? (
+                {filteredImages.length === 0 ? (
                   <div className="border border-dashed border-border-subtle rounded-3xl h-[420px] flex flex-col items-center justify-center text-text-muted gap-2">
                     <span className="text-5xl">🎨</span>
                     <p className="text-sm font-medium">
-                      {locale === "zh" ? "提交绘画任务，生成的艺术品将在此处同步展示。" : "Submit a task; generated artwork will appear synchronously here."}
+                      {searchQuery
+                        ? (locale === "zh" ? "未搜索到匹配的画作记录" : "No matching image records found")
+                        : (locale === "zh" ? "提交绘画任务，生成的艺术品将在此处同步展示。" : "Submit a task; generated artwork will appear synchronously here.")}
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {images.map((img: any) => (
+                    {filteredImages.map((img: any) => (
                       <div
                         key={img.id}
                         className={`bg-bg-surface-hover/20 border border-border-subtle rounded-2xl overflow-hidden hover:shadow-md transition-all group ${
@@ -1067,16 +1245,18 @@ export function PlaygroundClient({
                   {locale === "zh" ? "生成的视频列表" : "Generated Videos"}
                 </h4>
 
-                {videos.length === 0 ? (
+                {filteredVideos.length === 0 ? (
                   <div className="border border-dashed border-border-subtle rounded-3xl h-[420px] flex flex-col items-center justify-center text-text-muted gap-2">
                     <span className="text-5xl">🎬</span>
                     <p className="text-sm font-medium">
-                      {locale === "zh" ? "提交视频任务，系统将进行异步调度，并在此展示进程。" : "Submit a task; video status polling progress will appear here."}
+                      {searchQuery
+                        ? (locale === "zh" ? "未搜索到匹配的视频记录" : "No matching video records found")
+                        : (locale === "zh" ? "提交视频任务，系统将进行异步调度，并在此展示进程。" : "Submit a task; video status polling progress will appear here.")}
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {videos.map((vid) => (
+                    {filteredVideos.map((vid) => (
                       <div
                         key={vid.id}
                         className="bg-bg-surface-hover/20 border border-border-subtle rounded-2xl overflow-hidden hover:shadow-md transition-all group hover:border-brand-primary/30 p-4 space-y-4 flex flex-col justify-between"
@@ -1233,16 +1413,18 @@ export function PlaygroundClient({
                   {locale === "zh" ? "生成的音乐列表" : "Generated Music"}
                 </h4>
 
-                {songs.length === 0 ? (
+                {filteredSongs.length === 0 ? (
                   <div className="border border-dashed border-border-subtle rounded-3xl h-[420px] flex flex-col items-center justify-center text-text-muted gap-2">
                     <span className="text-5xl">🎵</span>
                     <p className="text-sm font-medium">
-                      {locale === "zh" ? "提交音乐任务，生成的音频和炫酷播放器将在此处展示。" : "Submit a task; music status polling and players will appear here."}
+                      {searchQuery
+                        ? (locale === "zh" ? "未搜索到匹配的音乐记录" : "No matching music records found")
+                        : (locale === "zh" ? "提交音乐任务，生成的音频和炫酷播放器将在此处展示。" : "Submit a task; music status polling and players will appear here.")}
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {songs.map((song) => (
+                    {filteredSongs.map((song) => (
                       <div
                         key={song.id}
                         className="bg-bg-surface-hover/20 border border-border-subtle rounded-2xl overflow-hidden hover:shadow-md transition-all p-5 flex flex-col justify-between hover:border-brand-primary/30"

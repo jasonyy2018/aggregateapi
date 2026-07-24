@@ -50,6 +50,18 @@ export async function GET(req: Request) {
       taskId,
     });
 
+    // Update TaskLog in DB if state is terminal (success or fail)
+    if (status.state === "success" || status.state === "fail") {
+      await prisma.taskLog.update({
+        where: { taskId },
+        data: {
+          status: status.state,
+          resultUrls: status.resultUrls || [],
+          failMsg: status.failMsg || null,
+        },
+      }).catch(() => {});
+    }
+
     return NextResponse.json(status);
   } catch (err: any) {
     console.error("Task Status Query error:", err);
