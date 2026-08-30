@@ -451,8 +451,9 @@ export async function createVideoMusicTask(args: {
 
   // ── Agnes Video Protocol (OpenAI Videos /v1/videos API) ──
   const isAgnes =
-    upstreamModelId.startsWith("agnes-video") ||
-    provider.baseUrl.includes("agnes") ||
+    upstreamModelId.toLowerCase().includes("agnes") ||
+    targetModelId.toLowerCase().includes("agnes") ||
+    provider.baseUrl.toLowerCase().includes("agnes") ||
     provider.slug.toLowerCase().includes("agnes");
 
   if (isAgnes) {
@@ -479,7 +480,15 @@ export async function createVideoMusicTask(args: {
       if (imgs.length > 0) agnesPayload.images = imgs.slice(0, 5);
     }
 
-    const res = await fetch(`${cleanBase}/v1/videos`, {
+    let videoEndpoint = cleanBase;
+    if (!videoEndpoint.endsWith("/v1")) {
+      videoEndpoint += "/v1";
+    }
+    videoEndpoint += "/videos";
+
+    console.log(`[Task Gateway] Submitting Agnes video task to: ${videoEndpoint} with model: ${targetModelId}`);
+
+    const res = await fetch(videoEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -576,7 +585,9 @@ export async function queryTaskStatus(args: {
 }): Promise<UnifiedTaskStatus> {
   const { provider, apiKey, taskId } = args;
   const cleanBase = getCleanDomainBase(provider.baseUrl);
-  const isAgnes = provider.baseUrl.includes("agnes") || provider.slug.toLowerCase().includes("agnes");
+  const isAgnes =
+    provider.baseUrl.toLowerCase().includes("agnes") ||
+    provider.slug.toLowerCase().includes("agnes");
 
   if (isAgnes) {
     return queryAgnesTaskStatus({

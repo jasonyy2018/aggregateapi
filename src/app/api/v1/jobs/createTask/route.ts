@@ -4,6 +4,7 @@ import { decryptSecret } from "@/lib/crypto";
 import { getRegistryEntry } from "@/lib/model-registry";
 import { chargeUserWithSubscription } from "@/lib/billing";
 import { resolveModel, kieError, chargeUser, getCleanDomainBase } from "@/lib/shared";
+import { createVideoMusicTask } from "@/lib/multimodal-gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -157,48 +158,27 @@ export async function POST(req: Request) {
       return kieError("Insufficient balance for this task", 402);
     }
 
-    console.log(`[Task Gateway] Client model "${requestedModel}" → DB model "${dbModelId}" → upstream "${upstreamModel}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
-
-    const upstreamPayload = {
-      model: upstreamModel,
-      callBackUrl: body.callBackUrl,
-      input: mergedInput,
-    };
-
-    const res = await fetch(upstreamUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${upstreamKey}`,
-        ...(provider.extraHeaders as Record<string, string> | null ?? {}),
+    // 4. Forward payload to upstream via unified multimodal gateway
+    const taskId = await createVideoMusicTask({
+      provider,
+      apiKey: upstreamKey,
+      upstreamModelId: model.modelId,
+      body: {
+        model: requestedModel,
+        prompt: body?.input?.prompt || "",
+        aspect_ratio: mergedInput.aspect_ratio || mergedInput.aspectRatio,
+        duration: mergedInput.duration,
+        image_url: mergedInput.image_url || mergedInput.imageUrl,
+        image_urls: mergedInput.image_urls || mergedInput.imageUrls,
+        first_frame: mergedInput.first_frame || mergedInput.first_frame_url,
+        last_frame: mergedInput.last_frame || mergedInput.last_frame_url,
+        mode: mergedInput.mode,
+        resolution: mergedInput.resolution,
+        style: mergedInput.style,
+        lyrics: mergedInput.lyrics,
+        instrumental: mergedInput.instrumental,
       },
-      body: JSON.stringify(upstreamPayload),
     });
-
-    // Safely parse response
-    const rawText = await res.text();
-    let data: any;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      return kieError(
-        `Upstream returned non-JSON response (HTTP ${res.status}): ${rawText.slice(0, 300)}`,
-        res.status || 502
-      );
-    }
-
-    if (!res.ok) {
-      return kieError(`Upstream Task Creation Failed (HTTP ${res.status}): ${data?.msg || JSON.stringify(data)}`, res.status);
-    }
-
-    if (data?.code && data.code !== 0 && data.code !== 200) {
-      return kieError(`Task Creation Failed: ${data.msg || JSON.stringify(data)}`, 400);
-    }
-
-    const taskId = data?.data?.taskId;
-    if (!taskId) {
-      return kieError(`Upstream did not return a taskId. Response: ${JSON.stringify(data)}`, 500);
-    }
 
     // 5. Bill & log flat-rate charge (represents 1000 tokens in database pricing)
     await chargeUser(prisma, apiKey.id, user.id, provider.slug, model.modelId, Math.round(1000 * durationMultiplier), finalFee);
