@@ -33,6 +33,7 @@ type ModelItem = {
   capabilities: string[];
   providerProtocol: string;
   providerSlug: string;
+  providerName?: string;
   modelId: string;
   pricing: number;
 };
@@ -41,6 +42,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  createdAtMs?: number;
 };
 
 type GeneratedImage = {
@@ -49,6 +51,10 @@ type GeneratedImage = {
   prompt: string;
   model: string;
   timestamp: string;
+  createdAtMs?: number;
+  status?: "generating" | "success" | "fail";
+  providerSlug?: string;
+  failMsg?: string;
 };
 
 type GeneratedVideo = {
@@ -61,6 +67,7 @@ type GeneratedVideo = {
   providerSlug?: string;
   failMsg?: string;
   timestamp: string;
+  createdAtMs?: number;
 };
 
 type GeneratedMusic = {
@@ -75,6 +82,7 @@ type GeneratedMusic = {
   lyrics?: string;
   style?: string;
   timestamp: string;
+  createdAtMs?: number;
 };
 
 export function PlaygroundClient({
@@ -89,18 +97,58 @@ export function PlaygroundClient({
   const { t, locale } = useLang();
   const [activeTab, setActiveTab] = useState<"chat" | "image" | "video" | "music">("chat");
 
-  // Models partitioned by capability — the DB capabilities field is the single source of truth.
-  // Using providerProtocol to detect chat models is WRONG: Kie.ai serves all models (image, video,
-  // music, LLM) via an OPENAI-protocol provider, so every model would incorrectly match.
-  const imageModels = models.filter((m) => m.capabilities.includes("image"));
-  const videoModels = models.filter((m) => m.capabilities.includes("video"));
-  const musicModels = models.filter((m) => m.capabilities.includes("music"));
-  // Chat (LLM) models: anything that has NO media capability
+  // Robust capability inference helpers ensuring models are accurately recognized in their respective tabs
+  const isVideoModel = (m: ModelItem) =>
+    m.capabilities.includes("video") ||
+    m.modelId.toLowerCase().includes("video") ||
+    m.modelId.toLowerCase().includes("seedance") ||
+    m.modelId.toLowerCase().includes("veo") ||
+    m.modelId.toLowerCase().includes("kling") ||
+    m.modelId.toLowerCase().includes("runway") ||
+    m.modelId.toLowerCase().includes("hailuo") ||
+    m.modelId.toLowerCase().includes("wan") ||
+    m.modelId.toLowerCase().includes("happyhorse") ||
+    m.modelId.toLowerCase().includes("luma") ||
+    m.modelId.toLowerCase().includes("sora") ||
+    m.modelId.toLowerCase().includes("vidu") ||
+    m.displayName.toLowerCase().includes("video") ||
+    m.displayName.toLowerCase().includes("视频");
+
+  const isImageModel = (m: ModelItem) =>
+    m.capabilities.includes("image") ||
+    m.modelId.toLowerCase().includes("image") ||
+    m.modelId.toLowerCase().includes("flux") ||
+    m.modelId.toLowerCase().includes("midjourney") ||
+    m.modelId.toLowerCase().includes("mj_") ||
+    m.modelId.toLowerCase().includes("nano-banana") ||
+    m.modelId.toLowerCase().includes("dall-e") ||
+    m.modelId.toLowerCase().includes("sdxl") ||
+    m.modelId.toLowerCase().includes("stable-diffusion") ||
+    m.modelId.toLowerCase().includes("topaz") ||
+    m.modelId.toLowerCase().includes("imagen") ||
+    m.modelId.toLowerCase().includes("recraft") ||
+    m.displayName.toLowerCase().includes("image") ||
+    m.displayName.toLowerCase().includes("绘画") ||
+    m.displayName.toLowerCase().includes("生图") ||
+    m.displayName.toLowerCase().includes("画作");
+
+  const isMusicModel = (m: ModelItem) =>
+    m.capabilities.includes("music") ||
+    m.capabilities.includes("audio") ||
+    m.modelId.toLowerCase().includes("music") ||
+    m.modelId.toLowerCase().includes("suno") ||
+    m.modelId.toLowerCase().includes("udio") ||
+    m.modelId.toLowerCase().includes("audio") ||
+    m.displayName.toLowerCase().includes("music") ||
+    m.displayName.toLowerCase().includes("音乐") ||
+    m.displayName.toLowerCase().includes("音频");
+
+  const imageModels = models.filter(isImageModel);
+  const videoModels = models.filter(isVideoModel);
+  const musicModels = models.filter(isMusicModel);
+  // Chat (LLM) models: anything that is not media
   const chatModels = models.filter(
-    (m) =>
-      !m.capabilities.includes("image") &&
-      !m.capabilities.includes("video") &&
-      !m.capabilities.includes("music")
+    (m) => !isVideoModel(m) && !isImageModel(m) && !isMusicModel(m)
   );
 
   // Fallback default arrays
@@ -143,6 +191,31 @@ export function PlaygroundClient({
   const [songs, setSongs] = useState<GeneratedMusic[]>([]);
   const [isMusicLoading, setIsMusicLoading] = useState(false);
   const [musicError, setMusicError] = useState("");
+
+  // Auto-select first model if none is currently selected
+  useEffect(() => {
+    if ((!selectedChatModel || !finalChatModels.some(m => m.id === selectedChatModel)) && finalChatModels.length > 0) {
+      setSelectedChatModel(finalChatModels[0].id);
+    }
+  }, [finalChatModels, selectedChatModel]);
+
+  useEffect(() => {
+    if ((!selectedImageModel || !finalImageModels.some(m => m.id === selectedImageModel)) && finalImageModels.length > 0) {
+      setSelectedImageModel(finalImageModels[0].id);
+    }
+  }, [finalImageModels, selectedImageModel]);
+
+  useEffect(() => {
+    if ((!selectedVideoModel || !finalVideoModels.some(m => m.id === selectedVideoModel)) && finalVideoModels.length > 0) {
+      setSelectedVideoModel(finalVideoModels[0].id);
+    }
+  }, [finalVideoModels, selectedVideoModel]);
+
+  useEffect(() => {
+    if ((!selectedMusicModel || !finalMusicModels.some(m => m.id === selectedMusicModel)) && finalMusicModels.length > 0) {
+      setSelectedMusicModel(finalMusicModels[0].id);
+    }
+  }, [finalMusicModels, selectedMusicModel]);
 
   // 7-day TTL helper: 7 days in milliseconds
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -903,7 +976,7 @@ export function PlaygroundClient({
                 ) : (
                   finalChatModels.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.displayName}
+                      {m.providerName ? `[${m.providerName}] ` : ""}{m.displayName} ({m.modelId})
                     </option>
                   ))
                 )}
@@ -1000,7 +1073,7 @@ export function PlaygroundClient({
                     ) : (
                       finalImageModels.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.displayName}
+                          {m.providerName ? `[${m.providerName}] ` : ""}{m.displayName} ({m.modelId})
                         </option>
                       ))
                     )}
@@ -1175,7 +1248,7 @@ export function PlaygroundClient({
                     ) : (
                       finalVideoModels.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.displayName}
+                          {m.providerName ? `[${m.providerName}] ` : ""}{m.displayName} ({m.modelId})
                         </option>
                       ))
                     )}
@@ -1333,7 +1406,7 @@ export function PlaygroundClient({
                     ) : (
                       finalMusicModels.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.displayName}
+                          {m.providerName ? `[${m.providerName}] ` : ""}{m.displayName} ({m.modelId})
                         </option>
                       ))
                     )}
