@@ -242,14 +242,23 @@ async function safeJsonParse(res: Response, context: string): Promise<any> {
   try {
     return JSON.parse(text);
   } catch {
-    // Detect HTML error pages (Cloudflare 502, nginx, etc.) and produce a clean message
+    // Detect HTML error pages (Cloudflare 502, WAF 403, nginx 504, etc.) and produce a clean message
     const trimmed = text.trimStart();
     let hint: string;
     if (trimmed.startsWith("<")) {
-      if (res.status === 502) hint = "Bad Gateway — Upstream service is temporarily unreachable. Please try again in a moment.";
-      else if (res.status === 503) hint = "Service Unavailable — Upstream service is under maintenance. Please try again later.";
-      else if (res.status === 504) hint = "Gateway Timeout — Upstream service did not respond in time.";
-      else hint = `Upstream returned an HTML error page (HTTP ${res.status}). The API may be temporarily down.`;
+      if (res.status === 401 || res.status === 403) {
+        hint = `Access Denied (HTTP ${res.status}) — Upstream rejected the request. Please check if the provider API Key is valid or if the Base URL supports the async task endpoint.`;
+      } else if (res.status === 404) {
+        hint = `Not Found (HTTP 404) — The upstream endpoint does not exist. Please check the provider Base URL.`;
+      } else if (res.status === 502) {
+        hint = "Bad Gateway — Upstream service is temporarily unreachable. Please try again in a moment.";
+      } else if (res.status === 503) {
+        hint = "Service Unavailable — Upstream service is under maintenance. Please try again later.";
+      } else if (res.status === 504) {
+        hint = "Gateway Timeout — Upstream service did not respond in time.";
+      } else {
+        hint = `Upstream returned an HTML error page (HTTP ${res.status}). The API may be temporarily down or protected by WAF.`;
+      }
     } else {
       hint = trimmed.slice(0, 200);
     }
@@ -321,6 +330,8 @@ export async function generateImage(args: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Authorization: `Bearer ${apiKey}`,
         ...(provider.extraHeaders as Record<string, string> | null ?? {}),
       },
@@ -469,6 +480,8 @@ export async function createVideoMusicTask(args: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json, text/plain, */*",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       Authorization: `Bearer ${apiKey}`,
       ...(provider.extraHeaders as Record<string, string> | null ?? {}),
     },
@@ -524,6 +537,8 @@ async function queryKieTaskStatus(args: {
 
   const res = await fetch(`${cleanBase}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
     headers: {
+      "Accept": "application/json, text/plain, */*",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       Authorization: `Bearer ${apiKey}`,
       ...(extraHeaders as Record<string, string> | null ?? {}),
     },
