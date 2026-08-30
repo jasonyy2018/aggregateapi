@@ -275,18 +275,27 @@ export async function generateImage(args: {
 }): Promise<any> {
   const { provider, apiKey, upstreamModelId, body } = args;
   const base = provider.baseUrl.replace(/\/+$/, "");
-  const isKie = provider.slug.toLowerCase() === "kie" || base.includes("kie.ai");
 
-  if (isKie) {
+  // Use registry for model ID and inputPatch (falls back to identity if not in registry)
+  const { getRegistryEntry } = await import("@/lib/model-registry");
+  const registryEntry = getRegistryEntry(upstreamModelId);
+  const targetModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
+  const isTaskImage =
+    registryEntry?.protocol === "kie-task-image" ||
+    provider.slug.toLowerCase().includes("kie") ||
+    base.includes("kie.ai") ||
+    targetModelId.includes("flux") ||
+    targetModelId.includes("midjourney") ||
+    targetModelId.includes("mj_") ||
+    targetModelId.includes("nano-banana") ||
+    targetModelId.includes("gpt-image") ||
+    targetModelId.includes("topaz");
+
+  if (isTaskImage) {
     const cleanBase = getCleanDomainBase(provider.baseUrl);
-
-    // Use registry for model ID and inputPatch (falls back to identity if not in registry)
-    const { getRegistryEntry } = await import("@/lib/model-registry");
-    const registryEntry = getRegistryEntry(upstreamModelId);
-    const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
     const inputPatch = registryEntry?.inputPatch ?? {};
 
-    console.log(`[Image Gateway] Platform model "${upstreamModelId}" → Upstream "${kieModelId}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
+    console.log(`[Image Gateway] Platform model "${upstreamModelId}" → Upstream "${targetModelId}"${Object.keys(inputPatch).length ? ` + patch ${JSON.stringify(inputPatch)}` : ""}`);
 
     // Build base input from prompt + size
     const size = body.size || "1024x1024";
@@ -306,7 +315,7 @@ export async function generateImage(args: {
       delete input.height;
     }
 
-    const payload = { model: kieModelId, input };
+    const payload = { model: targetModelId, input };
 
     const res = await fetch(`${cleanBase}/api/v1/jobs/createTask`, {
       method: "POST",
@@ -318,7 +327,7 @@ export async function generateImage(args: {
       body: JSON.stringify(payload),
     });
 
-    const data = await safeJsonParse(res, `createTask[${kieModelId}]`);
+    const data = await safeJsonParse(res, `createTask[${targetModelId}]`);
 
     if (data?.code && data.code !== 0 && data.code !== 200) {
       throw new Error(`Upstream Image Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
@@ -389,23 +398,16 @@ export async function createVideoMusicTask(args: {
   body: TaskCreateBody;
 }): Promise<string> {
   const { provider, apiKey, upstreamModelId, body } = args;
-  const base = provider.baseUrl.replace(/\/+$/, "");
-  const isKie = provider.slug.toLowerCase() === "kie" || base.includes("kie.ai");
-
-  if (!isKie) {
-    throw new Error(`Asynchronous task creation is currently only supported for Kie.ai provider. '${provider.slug}' protocol is not supported.`);
-  }
-
   const cleanBase = getCleanDomainBase(provider.baseUrl);
 
   // Use registry for model ID and inputPatch
   const { getRegistryEntry } = await import("@/lib/model-registry");
   const { parseGeminiOmniVideoId } = await import("@/lib/pricing");
   const registryEntry = getRegistryEntry(upstreamModelId);
-  const kieModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
+  const targetModelId = registryEntry?.upstreamModelId ?? upstreamModelId;
   const inputPatchFromRegistry = registryEntry?.inputPatch ?? {};
 
-  console.log(`[Task Gateway] Platform model "${upstreamModelId}" → Upstream "${kieModelId}"${Object.keys(inputPatchFromRegistry).length ? ` + patch ${JSON.stringify(inputPatchFromRegistry)}` : ""}`);
+  console.log(`[Task Gateway] Platform model "${upstreamModelId}" → Upstream "${targetModelId}"${Object.keys(inputPatchFromRegistry).length ? ` + patch ${JSON.stringify(inputPatchFromRegistry)}` : ""}`);
 
   // Build input — registry patch provides defaults, body overrides them
   let effectiveResolution = body.resolution || (inputPatchFromRegistry.resolution as string | undefined);
@@ -459,7 +461,7 @@ export async function createVideoMusicTask(args: {
   const cleanInput = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined));
 
   const payload = {
-    model: kieModelId,
+    model: targetModelId,
     input: cleanInput,
   };
 
@@ -473,7 +475,7 @@ export async function createVideoMusicTask(args: {
     body: JSON.stringify(payload),
   });
 
-  const data = await safeJsonParse(res, `createTask[${kieModelId}]`);
+  const data = await safeJsonParse(res, `createTask[${targetModelId}]`);
 
   if (data?.code && data.code !== 0 && data.code !== 200) {
     throw new Error(`Upstream Task Creation Failed: ${data.msg || JSON.stringify(data)}`);
