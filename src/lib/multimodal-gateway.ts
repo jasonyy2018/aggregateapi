@@ -74,6 +74,9 @@ export type TaskCreateBody = {
   reference_image?: string[];
   // HappyHorse video-edit: takes an existing video as input
   video_url?: string;
+  // Keyframe control
+  first_frame?: string;
+  last_frame?: string;
   // video-edit audio handling
   audio_setting?: string;
   // Grok Imagine specific
@@ -446,6 +449,63 @@ export async function createVideoMusicTask(args: {
     }
   }
 
+  // ── Agnes Video Protocol (OpenAI Videos /v1/videos API) ──
+  const isAgnes =
+    upstreamModelId.startsWith("agnes-video") ||
+    provider.baseUrl.includes("agnes") ||
+    provider.slug.toLowerCase().includes("agnes");
+
+  if (isAgnes) {
+    const mode = body.mode || (body.image_url ? "keyframe" : (body.image_urls?.length ? "reference" : "text"));
+    const seconds = String(parsedDuration || 5);
+    const size = "720P"; // Agnes Flash strictly requires 720P
+    const aspectRatio = body.aspect_ratio || "16:9";
+
+    const agnesPayload: Record<string, any> = {
+      model: targetModelId,
+      prompt: body.prompt || "",
+      seconds,
+      mode,
+      size,
+      aspect_ratio: aspectRatio,
+    };
+
+    if (mode === "keyframe") {
+      if (body.image_url) agnesPayload.first_frame = body.image_url;
+      if (body.first_frame) agnesPayload.first_frame = body.first_frame;
+      if (body.last_frame) agnesPayload.last_frame = body.last_frame;
+    } else if (mode === "reference") {
+      const imgs = body.image_urls || (body.image_url ? [body.image_url] : []);
+      if (imgs.length > 0) agnesPayload.images = imgs.slice(0, 5);
+    }
+
+    const res = await fetch(`${cleanBase}/v1/videos`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Authorization: `Bearer ${apiKey}`,
+        ...(provider.extraHeaders as Record<string, string> | null ?? {}),
+      },
+      body: JSON.stringify(agnesPayload),
+    });
+
+    const data = await safeJsonParse(res, `agnesVideos[${targetModelId}]`);
+
+    if (!res.ok) {
+      throw new Error(`Agnes Video Task Creation Failed (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
+    }
+
+    const videoId = data?.video_id || data?.id || data?.task_id || data?.data?.video_id || data?.data?.id;
+    if (!videoId) {
+      throw new Error(`Agnes did not return a video_id. Response: ${JSON.stringify(data)}`);
+    }
+
+    return videoId;
+  }
+
+  // ── Standard KIE Async Task Protocol (/api/v1/jobs/createTask) ──
   const input: Record<string, any> = {
     prompt: body.prompt || undefined,
     aspect_ratio: body.aspect_ratio || undefined,
@@ -516,6 +576,16 @@ export async function queryTaskStatus(args: {
 }): Promise<UnifiedTaskStatus> {
   const { provider, apiKey, taskId } = args;
   const cleanBase = getCleanDomainBase(provider.baseUrl);
+  const isAgnes = provider.baseUrl.includes("agnes") || provider.slug.toLowerCase().includes("agnes");
+
+  if (isAgnes) {
+    return queryAgnesTaskStatus({
+      cleanBase,
+      apiKey,
+      taskId,
+      extraHeaders: provider.extraHeaders,
+    });
+  }
 
   return queryKieTaskStatus({
     cleanBase,
@@ -523,6 +593,66 @@ export async function queryTaskStatus(args: {
     taskId,
     extraHeaders: provider.extraHeaders,
   });
+}
+
+// ----- Internals -----
+
+async function queryAgnesTaskStatus(args: {
+  cleanBase: string;
+  apiKey: string;
+  taskId: string;
+  extraHeaders?: any;
+}): Promise<UnifiedTaskStatus> {
+  const { cleanBase, apiKey, taskId, extraHeaders } = args;
+
+  const res = await fetch(`${cleanBase}/agnesapi?video_id=${encodeURIComponent(taskId)}&model_name=agnes-video-2.5-flash`, {
+    headers: {
+      "Accept": "application/json, text/plain, */*",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Authorization: `Bearer ${apiKey}`,
+      ...(extraHeaders as Record<string, string> | null ?? {}),
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Agnes task query failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const result = await safeJsonParse(res, `agnesapi[${taskId}]`);
+  const statusStr = (result?.status || result?.state || result?.data?.status || "waiting").toLowerCase();
+
+  let mappedState: UnifiedTaskStatus["state"] = "waiting";
+  if (statusStr === "completed" || statusStr === "success" || statusStr === "succeeded") {
+    mappedState = "success";
+  } else if (statusStr === "failed" || statusStr === "fail" || statusStr === "error") {
+    mappedState = "fail";
+  } else if (statusStr === "processing" || statusStr === "generating" || statusStr === "in_progress" || statusStr === "queued" || statusStr === "waiting") {
+    mappedState = "generating";
+  }
+
+  let resultUrls: string[] = [];
+  if (mappedState === "success") {
+    const rawUrl =
+      result?.video_url ||
+      result?.url ||
+      result?.result_url ||
+      result?.output?.video_url ||
+      result?.output?.url ||
+      result?.videos?.[0]?.url ||
+      result?.data?.video_url ||
+      result?.data?.url;
+    if (rawUrl) {
+      resultUrls = Array.isArray(rawUrl) ? rawUrl : [rawUrl];
+    }
+  }
+
+  return {
+    taskId,
+    state: mappedState,
+    resultUrls,
+    failMsg: result?.detail || result?.error || result?.failMsg || result?.msg || undefined,
+  };
 }
 
 // ----- Internals -----

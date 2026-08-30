@@ -147,6 +147,10 @@ export const MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   "bytedance/seedance-2-fast":          { upstreamModelId: "bytedance/seedance-2-fast", protocol: "kie-task-video", billing: "flat-rate", description: "Bytedance Seedance 2.0 Fast (Official KIE name)" },
   "bytedance/seedance-2-mini":          { upstreamModelId: "bytedance/seedance-2-mini", protocol: "kie-task-video", billing: "flat-rate", description: "Bytedance Seedance 2 Mini" },
 
+  // ── Agnes Video (OpenAI Videos format) ──
+  "agnes-video-2.5-flash": { upstreamModelId: "agnes-video-2.5-flash", protocol: "kie-task-video", billing: "flat-rate", description: "Agnes Video 2.5 Flash (720P)" },
+  "agnes-video-2.5":       { upstreamModelId: "agnes-video-2.5",       protocol: "kie-task-video", billing: "flat-rate", description: "Agnes Video 2.5" },
+
   // ── Kling 2.6 Motion Control ──
   "kling-2.6-motion-control-720p":  { upstreamModelId: "kling-2.6/motion-control", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "720p"  }, description: "Kling 2.6 Motion Control (720p)" },
   "kling-2.6-motion-control-1080p": { upstreamModelId: "kling-2.6/motion-control", protocol: "kie-task-video", billing: "flat-rate", inputPatch: { resolution: "1080p" }, description: "Kling 2.6 Motion Control (1080p)" },
