@@ -5,7 +5,10 @@ FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 # Install pnpm directly from npmmirror (Chinese mirror) to avoid Corepack auto-download
 # which fails on VPS servers with restricted access to registry.npmjs.org.
-RUN npm install -g pnpm --registry=https://registry.npmmirror.com
+# Pin to pnpm@9.15.0 matching package.json and disable version switching on musl
+RUN npm install -g pnpm@9.15.0 --registry=https://registry.npmmirror.com && \
+    pnpm config set package-manager-strict false && \
+    pnpm config set manage-package-manager-versions false
 WORKDIR /app
 
 # ---------- Dependencies ----------
@@ -36,7 +39,7 @@ RUN pnpm run build
 FROM node:20-alpine AS runner
 RUN apk add --no-cache openssl
 # Same pnpm install approach as base stage (no Corepack)
-RUN npm install -g pnpm --registry=https://registry.npmmirror.com
+RUN npm install -g pnpm@9.15.0 --registry=https://registry.npmmirror.com
 WORKDIR /app
 
 ENV NODE_ENV=production
