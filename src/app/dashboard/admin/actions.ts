@@ -249,6 +249,8 @@ export async function addSubscriptionPlan(
 
     revalidatePath("/dashboard/admin/providers");
     revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    revalidatePath("/");
+    revalidatePath("/dashboard/billing");
     return { success: true, plan: JSON.parse(JSON.stringify(plan)) };
   } catch (error: any) {
     return { error: error.message };
@@ -288,6 +290,8 @@ export async function updateSubscriptionPlan(
 
     revalidatePath("/dashboard/admin/providers");
     revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    revalidatePath("/");
+    revalidatePath("/dashboard/billing");
     return { success: true, plan: JSON.parse(JSON.stringify(plan)) };
   } catch (error: any) {
     return { error: error.message };
@@ -304,6 +308,8 @@ export async function deleteSubscriptionPlan(providerId: string, planId: string)
 
     revalidatePath("/dashboard/admin/providers");
     revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    revalidatePath("/");
+    revalidatePath("/dashboard/billing");
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
@@ -321,6 +327,8 @@ export async function toggleSubscriptionPlan(providerId: string, planId: string,
 
     revalidatePath("/dashboard/admin/providers");
     revalidatePath(`/dashboard/admin/providers/${providerId}`);
+    revalidatePath("/");
+    revalidatePath("/dashboard/billing");
     return { success: true };
   } catch (error: any) {
     return { error: error.message };

@@ -247,16 +247,37 @@ export function PlanManager({ providerId, providerModels, initialPlans }: PlanMa
 
             {/* Duration Days */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-text-muted font-semibold">Duration (Days)</label>
-              <select
-                value={durationDays}
-                onChange={(e) => setDurationDays(parseInt(e.target.value))}
-                className="p-2.5 rounded-xl border border-border-subtle bg-bg-surface text-text-main text-sm focus:outline-none focus:border-brand-primary"
-              >
-                <option value={30}>30 Days (Monthly / 包月)</option>
-                <option value={90}>90 Days (Quarterly / 包季)</option>
-                <option value={365}>365 Days (Yearly / 包年)</option>
-              </select>
+              <label className="text-xs text-text-muted font-semibold">Duration (有效天数)</label>
+              <div className="flex gap-2">
+                <select
+                  value={[7, 30, 90, 180, 365].includes(durationDays) ? durationDays : "custom"}
+                  onChange={(e) => {
+                    if (e.target.value !== "custom") {
+                      setDurationDays(parseInt(e.target.value));
+                    } else if ([7, 30, 90, 180, 365].includes(durationDays)) {
+                      setDurationDays(60);
+                    }
+                  }}
+                  className="p-2.5 rounded-xl border border-border-subtle bg-bg-surface text-text-main text-sm focus:outline-none focus:border-brand-primary flex-1"
+                >
+                  <option value={7}>7 Days (Weekly / 周套餐)</option>
+                  <option value={30}>30 Days (Monthly / 包月)</option>
+                  <option value={90}>90 Days (Quarterly / 包季)</option>
+                  <option value={180}>180 Days (Half-yearly / 半年)</option>
+                  <option value={365}>365 Days (Yearly / 包年)</option>
+                  <option value="custom">Custom Days (自定义天数)</option>
+                </select>
+                {(![7, 30, 90, 180, 365].includes(durationDays)) && (
+                  <input
+                    type="number"
+                    min="1"
+                    value={durationDays}
+                    onChange={(e) => setDurationDays(parseInt(e.target.value) || 1)}
+                    className="w-24 p-2.5 rounded-xl border border-border-subtle bg-bg-surface text-text-main text-sm focus:outline-none focus:border-brand-primary font-mono"
+                    placeholder="Days"
+                  />
+                )}
+              </div>
             </div>
 
             {/* Target Model */}

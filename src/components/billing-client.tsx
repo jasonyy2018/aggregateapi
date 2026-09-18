@@ -61,10 +61,23 @@ export function BillingClient({
   const [referralLink, setReferralLink] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [highlightedPlanId, setHighlightedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setReferralLink(`${window.location.origin}/?ref=${referralCode}`);
+
+      const params = new URLSearchParams(window.location.search);
+      const pid = params.get("planId");
+      if (pid) {
+        setHighlightedPlanId(pid);
+        setTimeout(() => {
+          const el = document.getElementById(`plan-${pid}`) || document.getElementById("packages-section");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 150);
+      }
     }
   }, [referralCode]);
 
@@ -245,7 +258,7 @@ export function BillingClient({
       </div>
 
       {/* Monthly & Yearly Packages (包月/包年套餐订购) */}
-      <div className="bg-bg-surface border border-border-subtle rounded-3xl p-8 md:p-10 shadow-sm mb-12">
+      <div id="packages-section" className="bg-bg-surface border border-border-subtle rounded-3xl p-8 md:p-10 shadow-sm mb-12">
         <h2 className="text-2xl font-bold text-text-main mb-2 tracking-tight flex items-center gap-2">
           <span>📅</span> {locale === "zh" ? "包月与包年套餐" : "Monthly & Yearly Packages"}
         </h2>
@@ -299,42 +312,110 @@ export function BillingClient({
         )}
 
         {/* Available Plans for purchase */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {availablePlansList.map((plan) => {
-            const hasSub = subList.some((s: any) => s.providerId === plan.providerId && s.isActive && new Date(s.endDate) > new Date());
-            return (
-              <div key={plan.id} className="p-6 bg-bg-main/40 hover:bg-bg-main/70 border border-border-subtle rounded-2xl flex flex-col justify-between transition-colors shadow-inner">
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="text-lg font-bold text-text-main">{locale === "zh" ? plan.nameZh : plan.nameEn}</h4>
-                    <span className="text-2xl font-extrabold text-brand-primary font-mono">${plan.price.toFixed(2)}</span>
+        {availablePlansList.length === 0 ? (
+          <div className="py-12 text-center text-text-muted bg-bg-main/30 border border-border-subtle rounded-2xl p-8">
+            <p className="text-sm font-medium">
+              {locale === "zh"
+                ? "平台暂未开放可订购的包月或包年套餐，您可以直接充值余额按需使用。"
+                : "No subscription packages currently available. You can top up balance to use standard pay-as-you-go."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {availablePlansList.map((plan) => {
+              const hasSub = subList.some((s: any) => s.providerId === plan.providerId && s.isActive && new Date(s.endDate) > new Date());
+              const isHighlighted = plan.id === highlightedPlanId;
+              const providerName = plan.provider?.name || plan.providerId;
+              const providerLogo = plan.provider?.logoUrl;
+              const isUnlimited = plan.tokenLimit === null || plan.tokenLimit === undefined;
+              const quotaLimit = isUnlimited
+                ? (locale === "zh" ? "无限额度" : "Unlimited Tokens")
+                : `${(plan.tokenLimit >= 1000000 ? `${(plan.tokenLimit / 1000000).toLocaleString()}M` : plan.tokenLimit.toLocaleString())} Tokens`;
+              const coverage = plan.providerModel
+                ? `${plan.providerModel.displayName || plan.providerModel.modelId}`
+                : (locale === "zh" ? "全模型通用" : "All Models");
+
+              return (
+                <div
+                  id={`plan-${plan.id}`}
+                  key={plan.id}
+                  className={`p-6 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-sm ${
+                    isHighlighted
+                      ? "bg-bg-surface border-2 border-brand-primary ring-4 ring-brand-primary/20 shadow-xl scale-[1.01]"
+                      : "bg-bg-main/40 hover:bg-bg-main/70 border border-border-subtle hover:border-brand-primary/40"
+                  }`}
+                >
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-3 gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          {providerLogo ? (
+                            <img src={providerLogo} alt={providerName} className="w-5 h-5 object-contain rounded" />
+                          ) : (
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary">
+                              {providerName}
+                            </span>
+                          )}
+                          <span className="text-xs text-text-muted font-medium">{providerName}</span>
+                        </div>
+                        <h4 className="text-lg font-bold text-text-main flex items-center gap-2">
+                          {locale === "zh" ? plan.nameZh : plan.nameEn}
+                          {isHighlighted && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-primary text-brand-primary-text font-bold uppercase">
+                              {locale === "zh" ? "选中" : "Selected"}
+                            </span>
+                          )}
+                        </h4>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-2xl font-extrabold text-brand-primary font-mono">${plan.price.toFixed(2)}</span>
+                        <span className="block text-[11px] text-text-muted font-medium">/ {plan.durationDays} {locale === "zh" ? "天" : "days"}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-text-muted mb-4 leading-relaxed min-h-[38px]">
+                      {locale === "zh"
+                        ? (plan.descriptionZh || `适用于 ${providerName} 的 API 专属套餐。`)
+                        : (plan.descriptionEn || `Subscription plan for ${providerName}.`)}
+                    </p>
+
+                    {/* Quick Specs */}
+                    <div className="grid grid-cols-2 gap-2 py-3 border-t border-border-subtle/50 text-xs">
+                      <div className="flex flex-col">
+                        <span className="text-text-muted text-[11px]">{locale === "zh" ? "适用模型" : "Model Coverage"}</span>
+                        <span className="font-semibold text-text-main truncate">{coverage}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-text-muted text-[11px]">{locale === "zh" ? "配额大小" : "Token Quota"}</span>
+                        <span className="font-semibold text-text-main">{quotaLimit}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-text-muted mb-4 leading-relaxed min-h-[40px]">
-                    {locale === "zh" ? plan.descriptionZh : plan.descriptionEn}
-                  </p>
+
+                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-subtle/40">
+                    <span className="text-xs text-text-muted font-medium">
+                      {locale === "zh" ? `有效期: ${plan.durationDays} 天` : `Validity: ${plan.durationDays} Days`}
+                    </span>
+                    <button
+                      onClick={() => handleBuy(plan.id)}
+                      disabled={purchasePending !== null}
+                      className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                        hasSub 
+                          ? "bg-bg-surface border border-border-subtle text-text-muted hover:text-brand-primary hover:border-brand-primary" 
+                          : "bg-brand-primary text-brand-primary-text hover:opacity-90 active:scale-95"
+                      }`}
+                    >
+                      {purchasePending === plan.id 
+                        ? (locale === "zh" ? "处理中..." : "Processing...") 
+                        : (hasSub ? (locale === "zh" ? "续费套餐" : "Renew Plan") : (locale === "zh" ? "立即订购" : "Subscribe"))}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-subtle/40">
-                  <span className="text-xs text-text-muted font-medium">
-                    {locale === "zh" ? `有效期: ${plan.durationDays} 天` : `Validity: ${plan.durationDays} Days`}
-                  </span>
-                  <button
-                    onClick={() => handleBuy(plan.id)}
-                    disabled={purchasePending !== null}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                      hasSub 
-                        ? "bg-bg-surface border border-border-subtle text-text-muted hover:text-brand-primary" 
-                        : "bg-brand-primary text-brand-primary-text hover:opacity-90 active:scale-95"
-                    }`}
-                  >
-                    {purchasePending === plan.id 
-                      ? (locale === "zh" ? "处理中..." : "Processing...") 
-                      : (hasSub ? (locale === "zh" ? "续费套餐" : "Renew Plan") : (locale === "zh" ? "立即购买" : "Buy Plan"))}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
 

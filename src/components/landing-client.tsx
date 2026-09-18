@@ -16,62 +16,26 @@ export function LandingClient({
 }) {
   const { t, locale, setLocale } = useLang();
   const { theme, toggleTheme } = useTheme();
-  const [billingFilter, setBillingFilter] = useState<"all" | "monthly" | "yearly">("all");
+  const [billingFilter, setBillingFilter] = useState<string>("all");
 
   const planList = Array.isArray(plans) ? plans : [];
 
-  // Fallback high-fidelity sample plans for premium marketing design if database has none
-  const demoPlans = [
-    {
-      id: "demo-starter",
-      nameZh: "微型开发套餐",
-      nameEn: "Starter Pack",
-      descriptionZh: "适合个人开发者或微型项目，以低廉的价格体验全部 API 路由服务。",
-      descriptionEn: "Perfect for individual developers and hobbyists looking to explore AI features.",
-      price: 9.90,
-      durationDays: 30,
-      tokenLimit: 5000000,
-      providerId: "openai",
-      provider: { name: "OpenAI Compatible" },
-      providerModel: null,
-      isPopular: false
-    },
-    {
-      id: "demo-pro",
-      nameZh: "专业研发套餐",
-      nameEn: "Developer Pro",
-      descriptionZh: "高并发，大额配额。覆盖全平台模型，包括主流的 DeepSeek R1 & GPT-4o。",
-      descriptionEn: "Highly popular. Suitable for production apps requiring high concurrency and premium models.",
-      price: 49.00,
-      durationDays: 30,
-      tokenLimit: 35000000,
-      providerId: "all",
-      provider: { name: "DeepSeek / OpenAI / Anthropic" },
-      providerModel: null,
-      isPopular: true
-    },
-    {
-      id: "demo-enterprise",
-      nameZh: "企业包年尊享",
-      nameEn: "Enterprise Annual",
-      descriptionZh: "专为大中型企业设计。不限额度，独享高优先并发线路，按年付费更省钱。",
-      descriptionEn: "Unlimited tokens with direct routing support. Ideal for business scaling and high API loads.",
-      price: 499.00,
-      durationDays: 365,
-      tokenLimit: null,
-      providerId: "all",
-      provider: { name: "All Models" },
-      providerModel: null,
-      isPopular: false
-    }
-  ];
+  // Detect which duration categories actually exist in backend plans
+  const hasWeekly = planList.some((p) => p.durationDays < 30);
+  const hasMonthly = planList.some((p) => p.durationDays >= 30 && p.durationDays <= 31);
+  const hasQuarterly = planList.some((p) => p.durationDays > 31 && p.durationDays <= 120);
+  const hasYearly = planList.some((p) => p.durationDays > 120);
 
-  // Filter plans based on durationDays (monthly is < 360 days, yearly is >= 360 days)
+  // Count distinct duration categories
+  const categoriesCount = [hasWeekly, hasMonthly, hasQuarterly, hasYearly].filter(Boolean).length;
+
+  // Filter plans strictly from backend data
   const filteredPlans = planList.filter((plan) => {
     if (billingFilter === "all") return true;
-    const isYearly = plan.durationDays >= 360;
-    if (billingFilter === "monthly") return !isYearly;
-    if (billingFilter === "yearly") return isYearly;
+    if (billingFilter === "weekly") return plan.durationDays < 30;
+    if (billingFilter === "monthly") return plan.durationDays >= 30 && plan.durationDays <= 31;
+    if (billingFilter === "quarterly") return plan.durationDays > 31 && plan.durationDays <= 120;
+    if (billingFilter === "yearly") return plan.durationDays > 120;
     return true;
   });
 
@@ -94,13 +58,15 @@ export function LandingClient({
               "@type": "Brand",
               "name": "AggregatAPI"
             },
-            "offers": {
-              "@type": "AggregateOffer",
-              "priceCurrency": "USD",
-              "lowPrice": "9.90",
-              "highPrice": "499.00",
-              "offerCount": String(filteredPlans.length > 0 ? filteredPlans.length : demoPlans.length)
-            }
+            ...(planList.length > 0 ? {
+              "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "USD",
+                "lowPrice": String(Math.min(...planList.map((p) => p.price))),
+                "highPrice": String(Math.max(...planList.map((p) => p.price))),
+                "offerCount": String(planList.length)
+              }
+            } : {})
           })
         }}
       />
@@ -195,10 +161,12 @@ export function LandingClient({
               </Link>
             )}
             <Link
-              href="#pricing"
+              href={planList.length > 0 ? "#pricing" : "#features"}
               className="inline-flex items-center justify-center h-14 px-8 rounded-lg border border-border-subtle text-text-main bg-bg-surface text-lg transition-colors hover:bg-bg-surface-hover font-medium"
             >
-              {locale === "zh" ? "套餐价格" : "Pricing Plans"}
+              {planList.length > 0
+                ? (locale === "zh" ? "套餐价格" : "Pricing Plans")
+                : (locale === "zh" ? "功能特性" : "Features")}
             </Link>
           </div>
         </div>
@@ -226,202 +194,299 @@ export function LandingClient({
           ))}
         </div>
 
-        {/* Pricing Section (首页套餐计划) */}
-        <div id="pricing" className="z-10 w-full max-w-6xl mx-auto py-16 px-4 flex flex-col items-center">
-          <div className="text-center max-w-3xl mb-12">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-primary/10 text-brand-primary mb-3">
-              ⚡ {locale === "zh" ? "特惠专区" : "Special Offers"}
+        {/* Pricing Section (首页套餐计划 - 仅在后台创建套餐后展示) */}
+        {planList.length > 0 && (
+          <div id="pricing" className="z-10 w-full max-w-6xl mx-auto py-16 px-4 flex flex-col items-center">
+            <div className="text-center max-w-3xl mb-12">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-primary/10 text-brand-primary mb-3">
+                ⚡ {locale === "zh" ? "特惠专区" : "Special Offers"}
+              </div>
+              <h2 className="text-4xl md:text-6xl font-extrabold text-text-main tracking-tight mb-4 bg-gradient-to-r from-text-main via-brand-primary to-brand-secondary bg-clip-text text-transparent">
+                {locale === "zh" ? "精选套餐 极速接入" : "Flexible Subscription Plans"}
+              </h2>
+              <p className="text-text-muted text-base md:text-lg leading-relaxed">
+                {locale === "zh"
+                  ? "选择适合您的包月或包年套餐，享受极具性价比的 API 优质路由，无感支付与按量自动扣减。"
+                  : "Select a package tailormade for your projects. Get premium routing, high concurrency, and predictable spending."}
+              </p>
             </div>
-            <h2 className="text-4xl md:text-6xl font-extrabold text-text-main tracking-tight mb-4 bg-gradient-to-r from-text-main via-brand-primary to-brand-secondary bg-clip-text text-transparent">
-              {locale === "zh" ? "精选套餐 极速接入" : "Flexible Subscription Plans"}
-            </h2>
-            <p className="text-text-muted text-base md:text-lg leading-relaxed">
-              {locale === "zh"
-                ? "选择适合您的包月或包年套餐，享受极具性价比的 API 优质路由，无感支付与按量自动扣减。"
-                : "Select a package tailormade for your projects. Get premium routing, high concurrency, and predictable spending."}
-            </p>
-          </div>
 
-          {/* Monthly / Yearly Switcher */}
-          <div className="flex items-center justify-center mb-12">
-            <div className="relative flex p-1 bg-bg-surface border border-border-subtle rounded-2xl shadow-inner">
-              <button
-                onClick={() => setBillingFilter("all")}
-                className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
-                  billingFilter === "all"
-                    ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
-                    : "text-text-muted hover:text-text-main"
-                }`}
-              >
-                {locale === "zh" ? "全部套餐" : "All Plans"}
-              </button>
-              <button
-                onClick={() => setBillingFilter("monthly")}
-                className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
-                  billingFilter === "monthly"
-                    ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
-                    : "text-text-muted hover:text-text-main"
-                }`}
-              >
-                {locale === "zh" ? "包月计划" : "Monthly"}
-              </button>
-              <button
-                onClick={() => setBillingFilter("yearly")}
-                className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
-                  billingFilter === "yearly"
-                    ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
-                    : "text-text-muted hover:text-text-main"
-                }`}
-              >
-                {locale === "zh" ? "包年优选" : "Yearly Saving"}
-              </button>
-            </div>
-          </div>
-
-          {/* Pricing Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-center items-stretch">
-            {(filteredPlans.length > 0 ? filteredPlans : demoPlans).map((plan, idx) => {
-              const coverage = plan.providerModel
-                ? `${plan.provider?.name || plan.providerId} / ${plan.providerModel.displayName || plan.providerModelId}`
-                : plan.provider?.name
-                ? `${plan.provider.name} (${locale === "zh" ? "全模型通用" : "All Models"})`
-                : (locale === "zh" ? "全平台模型通用" : "All Models Across Providers");
-
-              const quotaLimit = plan.tokenLimit === null || plan.tokenLimit === undefined
-                ? (locale === "zh" ? "无限额度" : "Unlimited Tokens")
-                : `${(plan.tokenLimit / 1000000).toFixed(1)}M Tokens`;
-
-              const isYearly = plan.durationDays >= 360;
-              // Highlight the middle card, or a plan explicitly set as popular
-              const isPopular = plan.isPopular || idx === 1;
-
-              return (
-                <div
-                  key={plan.id || idx}
-                  className={`relative rounded-3xl border p-8 flex flex-col justify-between transition-all duration-500 group ${
-                    isPopular
-                      ? "border-brand-primary/60 bg-bg-surface/90 shadow-2xl scale-[1.03] md:scale-[1.05] z-10 hover:-translate-y-1.5"
-                      : "border-border-subtle bg-bg-surface/50 backdrop-blur-md shadow-lg hover:border-brand-secondary/60 hover:-translate-y-1"
-                  }`}
-                >
-                  {/* Neon Glow backdrops for Featured Card */}
-                  {isPopular && (
-                    <div className="absolute -inset-px bg-gradient-to-r from-brand-primary to-brand-secondary rounded-3xl blur-[8px] opacity-20 group-hover:opacity-40 transition-opacity -z-10" />
-                  )}
-
-                  {/* Hot Badge */}
-                  <div className="absolute top-5 right-5 flex gap-2">
-                    {isPopular && (
-                      <span className="bg-brand-secondary/15 text-brand-secondary border border-brand-secondary/20 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide">
-                        {locale === "zh" ? "最受欢迎" : "Popular"}
-                      </span>
-                    )}
-                    <span className="bg-brand-primary/10 text-brand-primary px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                      {isYearly ? (locale === "zh" ? "年付更省" : "Yearly") : (locale === "zh" ? "按月" : "Monthly")}
-                    </span>
-                  </div>
-
-                  <div>
-                    {/* Header */}
-                    <div className="mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-lg mb-4">
-                        {plan.tokenLimit === null ? "∞" : "⚡"}
-                      </div>
-                      <h3 className="text-2xl font-bold text-text-main group-hover:text-brand-primary transition-colors">
-                        {locale === "zh" ? plan.nameZh : plan.nameEn}
-                      </h3>
-                      <p className="text-xs text-text-muted mt-2 leading-relaxed min-h-[40px]">
-                        {locale === "zh" ? plan.descriptionZh : plan.descriptionEn}
-                      </p>
-                    </div>
-
-                    {/* Pricing Display */}
-                    <div className="flex items-baseline gap-1 mb-6 border-b border-border-subtle/50 pb-6">
-                      <span className="text-xs text-text-muted font-bold mr-1">$</span>
-                      <span className="text-5xl font-extrabold text-text-main font-mono tracking-tight">
-                        {plan.price.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-text-muted font-medium ml-1">
-                        / {plan.durationDays} {locale === "zh" ? "天" : "days"}
-                      </span>
-                    </div>
-
-                    {/* Specifications List */}
-                    <ul className="space-y-3.5 mb-8">
-                      <li className="flex items-start gap-3 text-sm text-text-muted">
-                        <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
-                        <div>
-                          <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
-                            {locale === "zh" ? "支持范围" : "Model Coverage"}
-                          </span>
-                          <span className="text-text-main font-medium text-xs md:text-sm">{coverage}</span>
-                        </div>
-                      </li>
-                      <li className="flex items-start gap-3 text-sm text-text-muted">
-                        <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
-                        <div>
-                          <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
-                            {locale === "zh" ? "Token 额度" : "Token Quota"}
-                          </span>
-                          <span className="text-text-main font-extrabold text-xs md:text-sm tracking-wide">
-                            {quotaLimit}
-                          </span>
-                        </div>
-                      </li>
-                      <li className="flex items-start gap-3 text-sm text-text-muted">
-                        <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
-                        <div>
-                          <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
-                            {locale === "zh" ? "通道线路" : "Routing Route"}
-                          </span>
-                          <span className="text-text-main font-medium text-xs">
-                            {locale === "zh" ? "高优先级独享并发通道，秒级低延迟" : "VIP high concurrency line with ultra-low latency"}
-                          </span>
-                        </div>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Actions */}
-                  <Link
-                    href={isLoggedIn ? "/dashboard/billing" : "/login"}
-                    className={`w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-md ${
-                      isPopular
-                        ? "bg-brand-primary hover:bg-brand-primary/90 text-brand-primary-text hover:shadow-brand-primary/20 hover:shadow-lg scale-[1.01]"
-                        : "bg-bg-surface-hover hover:bg-brand-primary hover:text-brand-primary-text text-text-main border border-border-subtle"
+            {/* Duration Filter Switcher (仅当存在多个周期时展示) */}
+            {categoriesCount > 1 && (
+              <div className="flex items-center justify-center mb-12">
+                <div className="relative flex p-1 bg-bg-surface border border-border-subtle rounded-2xl shadow-inner gap-1">
+                  <button
+                    onClick={() => setBillingFilter("all")}
+                    className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
+                      billingFilter === "all"
+                        ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
+                        : "text-text-muted hover:text-text-main"
                     }`}
                   >
-                    {locale === "zh" ? "立即订阅" : "Subscribe Now"}
-                  </Link>
+                    {locale === "zh" ? "全部套餐" : "All Plans"}
+                  </button>
+                  {hasWeekly && (
+                    <button
+                      onClick={() => setBillingFilter("weekly")}
+                      className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
+                        billingFilter === "weekly"
+                          ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
+                          : "text-text-muted hover:text-text-main"
+                      }`}
+                    >
+                      {locale === "zh" ? "周卡" : "Weekly"}
+                    </button>
+                  )}
+                  {hasMonthly && (
+                    <button
+                      onClick={() => setBillingFilter("monthly")}
+                      className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
+                        billingFilter === "monthly"
+                          ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
+                          : "text-text-muted hover:text-text-main"
+                      }`}
+                    >
+                      {locale === "zh" ? "包月计划" : "Monthly"}
+                    </button>
+                  )}
+                  {hasQuarterly && (
+                    <button
+                      onClick={() => setBillingFilter("quarterly")}
+                      className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
+                        billingFilter === "quarterly"
+                          ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
+                          : "text-text-muted hover:text-text-main"
+                      }`}
+                    >
+                      {locale === "zh" ? "包季优选" : "Quarterly"}
+                    </button>
+                  )}
+                  {hasYearly && (
+                    <button
+                      onClick={() => setBillingFilter("yearly")}
+                      className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all duration-300 ${
+                        billingFilter === "yearly"
+                          ? "bg-brand-primary text-brand-primary-text shadow-md scale-105"
+                          : "text-text-muted hover:text-text-main"
+                      }`}
+                    >
+                      {locale === "zh" ? "包年尊享" : "Yearly"}
+                    </button>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
 
-          {/* Mini Trust Badges */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mt-16 pt-8 border-t border-border-subtle/50 w-full max-w-4xl text-center">
-            <div className="flex flex-col items-center">
-              <span className="text-2xl mb-1">⚡</span>
-              <span className="text-xs font-bold text-text-main">{locale === "zh" ? "极速响应" : "Instant Activation"}</span>
-              <span className="text-[10px] text-text-muted">{locale === "zh" ? "余额即时开通" : "Instant setup with balance"}</span>
+            {/* Pricing Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-center items-stretch">
+              {filteredPlans.length === 0 ? (
+                <div className="col-span-full py-12 text-center text-text-muted bg-bg-surface/50 border border-border-subtle rounded-2xl p-8">
+                  <p className="text-base font-medium">
+                    {locale === "zh" ? "该周期暂无可订购套餐" : "No packages found for this billing cycle."}
+                  </p>
+                  <button
+                    onClick={() => setBillingFilter("all")}
+                    className="mt-3 text-sm text-brand-primary hover:underline font-semibold"
+                  >
+                    {locale === "zh" ? "查看全部套餐" : "View all plans"}
+                  </button>
+                </div>
+              ) : (
+                filteredPlans.map((plan, idx) => {
+                  const providerName = plan.provider?.name || plan.providerId;
+                  const providerLogo = plan.provider?.logoUrl;
+                  const coverage = plan.providerModel
+                    ? `${providerName} / ${plan.providerModel.displayName || plan.providerModel.modelId}`
+                    : `${providerName} (${locale === "zh" ? "全部模型通用" : "All Models"})`;
+
+                  const quotaLimit =
+                    plan.tokenLimit === null || plan.tokenLimit === undefined
+                      ? (locale === "zh" ? "无限额度" : "Unlimited Tokens")
+                      : `${(plan.tokenLimit >= 1000000 ? `${(plan.tokenLimit / 1000000).toLocaleString()}M` : plan.tokenLimit.toLocaleString())} Tokens`;
+
+                  const isUnlimited = plan.tokenLimit === null || plan.tokenLimit === undefined;
+                  const isYearly = plan.durationDays >= 360;
+                  const durationBadge =
+                    plan.durationDays === 7
+                      ? (locale === "zh" ? "周卡" : "Weekly")
+                      : plan.durationDays === 30
+                      ? (locale === "zh" ? "包月" : "Monthly")
+                      : plan.durationDays === 90
+                      ? (locale === "zh" ? "包季" : "Quarterly")
+                      : plan.durationDays >= 360
+                      ? (locale === "zh" ? "包年" : "Yearly")
+                      : `${plan.durationDays} ${locale === "zh" ? "天" : "days"}`;
+
+                  // Highlight card if unlimited, yearly, or marked popular
+                  const isPopular = plan.isPopular || isUnlimited || (filteredPlans.length >= 3 && idx === 1);
+
+                  const targetBillingUrl = `/dashboard/billing?planId=${plan.id}`;
+                  const actionHref = isLoggedIn
+                    ? targetBillingUrl
+                    : `/login?callbackUrl=${encodeURIComponent(targetBillingUrl)}`;
+
+                  return (
+                    <div
+                      key={plan.id || idx}
+                      className={`relative rounded-3xl border p-8 flex flex-col justify-between transition-all duration-500 group ${
+                        isPopular
+                          ? "border-brand-primary/60 bg-bg-surface/90 shadow-2xl scale-[1.02] md:scale-[1.04] z-10 hover:-translate-y-1.5"
+                          : "border-border-subtle bg-bg-surface/50 backdrop-blur-md shadow-lg hover:border-brand-secondary/60 hover:-translate-y-1"
+                      }`}
+                    >
+                      {/* Neon Glow backdrops for Featured Card */}
+                      {isPopular && (
+                        <div className="absolute -inset-px bg-gradient-to-r from-brand-primary to-brand-secondary rounded-3xl blur-[8px] opacity-20 group-hover:opacity-40 transition-opacity -z-10" />
+                      )}
+
+                      {/* Badges */}
+                      <div className="absolute top-5 right-5 flex gap-2 items-center">
+                        {isPopular && (
+                          <span className="bg-brand-secondary/15 text-brand-secondary border border-brand-secondary/20 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide">
+                            {locale === "zh" ? "热门推荐" : "Popular"}
+                          </span>
+                        )}
+                        <span className="bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                          {durationBadge}
+                        </span>
+                      </div>
+
+                      <div>
+                        {/* Header */}
+                        <div className="mb-6">
+                          <div className="flex items-center gap-2.5 mb-3">
+                            {providerLogo ? (
+                              <img src={providerLogo} alt={providerName} className="w-8 h-8 object-contain rounded-lg p-0.5 bg-bg-main border border-border-subtle" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-sm">
+                                {isUnlimited ? "∞" : "⚡"}
+                              </div>
+                            )}
+                            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                              {providerName}
+                            </span>
+                          </div>
+                          <h3 className="text-2xl font-bold text-text-main group-hover:text-brand-primary transition-colors">
+                            {locale === "zh" ? plan.nameZh : plan.nameEn}
+                          </h3>
+                          <p className="text-xs text-text-muted mt-2 leading-relaxed min-h-[38px]">
+                            {locale === "zh"
+                              ? (plan.descriptionZh || `适用于 ${providerName} 的高性价比 API 订购套餐。`)
+                              : (plan.descriptionEn || `Tailored API subscription package for ${providerName}.`)}
+                          </p>
+                        </div>
+
+                        {/* Pricing Display */}
+                        <div className="flex flex-col mb-6 border-b border-border-subtle/50 pb-6">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xs text-text-muted font-bold mr-1">$</span>
+                            <span className="text-5xl font-extrabold text-text-main font-mono tracking-tight">
+                              {plan.price.toFixed(2)}
+                            </span>
+                            <span className="text-xs text-text-muted font-medium ml-1">
+                              / {plan.durationDays} {locale === "zh" ? "天" : "days"}
+                            </span>
+                          </div>
+                          {plan.durationDays >= 60 && (
+                            <span className="text-[11px] text-brand-primary font-semibold mt-1">
+                              {locale === "zh"
+                                ? `约 $${(plan.price / (plan.durationDays / 30)).toFixed(2)} / 月`
+                                : `≈ $${(plan.price / (plan.durationDays / 30)).toFixed(2)} / mo`}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Specifications List */}
+                        <ul className="space-y-3.5 mb-8">
+                          <li className="flex items-start gap-3 text-sm text-text-muted">
+                            <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
+                            <div>
+                              <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
+                                {locale === "zh" ? "支持范围" : "Model Coverage"}
+                              </span>
+                              <span className="text-text-main font-medium text-xs md:text-sm">{coverage}</span>
+                            </div>
+                          </li>
+                          <li className="flex items-start gap-3 text-sm text-text-muted">
+                            <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
+                            <div>
+                              <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
+                                {locale === "zh" ? "Token 额度" : "Token Quota"}
+                              </span>
+                              <span className="text-text-main font-extrabold text-xs md:text-sm tracking-wide">
+                                {quotaLimit}
+                              </span>
+                            </div>
+                          </li>
+                          <li className="flex items-start gap-3 text-sm text-text-muted">
+                            <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
+                            <div>
+                              <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
+                                {locale === "zh" ? "通道线路" : "Routing Route"}
+                              </span>
+                              <span className="text-text-main font-medium text-xs">
+                                {locale === "zh" ? "高优先级独享并发通道，秒级低延迟" : "VIP high concurrency line with ultra-low latency"}
+                              </span>
+                            </div>
+                          </li>
+                          <li className="flex items-start gap-3 text-sm text-text-muted">
+                            <span className="text-brand-primary font-bold shrink-0 mt-0.5">✓</span>
+                            <div>
+                              <span className="block text-[11px] text-text-muted/70 uppercase font-semibold">
+                                {locale === "zh" ? "自动续接" : "Auto Fallback"}
+                              </span>
+                              <span className="text-text-main font-medium text-xs">
+                                {locale === "zh" ? "套餐用尽自动切换至余额按量计费，业务不中断" : "Auto fallback to standard rates on quota expiry"}
+                              </span>
+                            </div>
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Actions */}
+                      <Link
+                        href={actionHref}
+                        className={`w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-md ${
+                          isPopular
+                            ? "bg-brand-primary hover:bg-brand-primary/90 text-brand-primary-text hover:shadow-brand-primary/20 hover:shadow-lg scale-[1.01]"
+                            : "bg-bg-surface-hover hover:bg-brand-primary hover:text-brand-primary-text text-text-main border border-border-subtle"
+                        }`}
+                      >
+                        {isLoggedIn
+                          ? (locale === "zh" ? "立即订阅" : "Subscribe Now")
+                          : (locale === "zh" ? "登录并订阅" : "Sign in to Subscribe")}
+                      </Link>
+                    </div>
+                  );
+                })
+              )}
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-2xl mb-1">🛡️</span>
-              <span className="text-xs font-bold text-text-main">{locale === "zh" ? "安全保障" : "High Availability"}</span>
-              <span className="text-[10px] text-text-muted">{locale === "zh" ? "高并发容灾" : "Failover & backup paths"}</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-2xl mb-1">🔄</span>
-              <span className="text-xs font-bold text-text-main">{locale === "zh" ? "自由灵活" : "Flexible Duration"}</span>
-              <span className="text-[10px] text-text-muted">{locale === "zh" ? "随时叠加续费" : "Stackable subscriptions"}</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-2xl mb-1">💰</span>
-              <span className="text-xs font-bold text-text-main">{locale === "zh" ? "按需消费" : "Smart Billing"}</span>
-              <span className="text-[10px] text-text-muted">{locale === "zh" ? "超出部分自动按额扣减" : "Auto fallback to standard rates"}</span>
+
+            {/* Mini Trust Badges */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mt-16 pt-8 border-t border-border-subtle/50 w-full max-w-4xl text-center">
+              <div className="flex flex-col items-center">
+                <span className="text-2xl mb-1">⚡</span>
+                <span className="text-xs font-bold text-text-main">{locale === "zh" ? "极速响应" : "Instant Activation"}</span>
+                <span className="text-[10px] text-text-muted">{locale === "zh" ? "余额即时开通" : "Instant setup with balance"}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl mb-1">🛡️</span>
+                <span className="text-xs font-bold text-text-main">{locale === "zh" ? "安全保障" : "High Availability"}</span>
+                <span className="text-[10px] text-text-muted">{locale === "zh" ? "高并发容灾" : "Failover & backup paths"}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl mb-1">🔄</span>
+                <span className="text-xs font-bold text-text-main">{locale === "zh" ? "自由灵活" : "Flexible Duration"}</span>
+                <span className="text-[10px] text-text-muted">{locale === "zh" ? "随时叠加续费" : "Stackable subscriptions"}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl mb-1">💰</span>
+                <span className="text-xs font-bold text-text-main">{locale === "zh" ? "按需消费" : "Smart Billing"}</span>
+                <span className="text-[10px] text-text-muted">{locale === "zh" ? "超出部分自动按额扣减" : "Auto fallback to standard rates"}</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Footer */}
